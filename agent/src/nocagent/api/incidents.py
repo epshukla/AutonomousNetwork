@@ -4,6 +4,7 @@ from sqlalchemy import text
 from nocagent.db.engine import async_session
 from nocagent.core.decision_engine import decision_engine
 from nocagent.core.executor import executor
+from nocagent.core.reasoner import reasoner
 
 router = APIRouter(prefix="/api/v1", tags=["incidents"])
 
@@ -45,9 +46,7 @@ async def list_incidents(limit: int = 50, status: str | None = None):
 async def get_incident(incident_id: int):
     async with async_session() as session:
         result = await session.execute(
-            text(
-                "SELECT * FROM incidents WHERE id = :id"
-            ),
+            text("SELECT * FROM incidents WHERE id = :id"),
             {"id": incident_id},
         )
         row = result.fetchone()
@@ -97,6 +96,19 @@ async def get_incident(incident_id: int):
                 for d in decisions.fetchall()
             ],
         }
+
+
+@router.post("/incidents/{incident_id}/diagnose")
+async def diagnose_incident(incident_id: int):
+    """
+    Trigger AI diagnosis for an incident. This is the ONLY place
+    Claude gets called — on-demand, when the user clicks 'Diagnose'.
+    Makes exactly 1 Claude API call.
+    """
+    result = await reasoner.diagnose_incident(incident_id)
+    if "error" in result:
+        raise HTTPException(404, result["error"])
+    return result
 
 
 @router.post("/incidents/{incident_id}/approve")

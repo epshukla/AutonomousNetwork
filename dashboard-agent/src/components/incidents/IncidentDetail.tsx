@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, AlertCircle, Server, Clock, CheckCircle, Target, Brain } from 'lucide-react';
-import { Incident } from '../../api/agent';
+import { X, AlertCircle, Server, Clock, CheckCircle, Target, Brain, Zap, Loader2 } from 'lucide-react';
+import { Incident, diagnoseIncident } from '../../api/agent';
 import ReasoningTrace from '../agent/ReasoningTrace';
 import Timeline from './Timeline';
 
@@ -27,6 +28,22 @@ const statusConfig: Record<string, { color: string; bg: string }> = {
 export default function IncidentDetail({ incident, onClose }: IncidentDetailProps) {
   const sev = severityConfig[incident.severity] || severityConfig.medium;
   const stat = statusConfig[incident.status] || statusConfig.detected;
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnosisResult, setDiagnosisResult] = useState<string | null>(null);
+  const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
+
+  const handleDiagnose = async () => {
+    setDiagnosing(true);
+    setDiagnosisError(null);
+    try {
+      const result = await diagnoseIncident(String(incident.id));
+      setDiagnosisResult(result.diagnosis);
+    } catch (err: any) {
+      setDiagnosisError(err?.message || 'Diagnosis failed');
+    } finally {
+      setDiagnosing(false);
+    }
+  };
 
   return (
     <motion.div
@@ -106,6 +123,49 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
           </div>
         )}
       </div>
+
+      {/* AI Diagnosis Button */}
+      <div className="mb-6">
+        <button
+          onClick={handleDiagnose}
+          disabled={diagnosing}
+          className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3 ${
+            diagnosing
+              ? 'bg-noc-surface text-noc-muted border border-noc-border/30 cursor-wait'
+              : 'bg-gradient-to-r from-noc-cyan/20 to-noc-green/20 text-noc-cyan border-2 border-noc-cyan/30 hover:border-noc-cyan/60 hover:shadow-lg hover:shadow-noc-cyan/20'
+          }`}
+        >
+          {diagnosing ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              AI Diagnosing... (1 API call)
+            </>
+          ) : (
+            <>
+              <Zap className="w-5 h-5" />
+              {diagnosisResult || incident.reasoning_trace ? 'Re-Diagnose with AI' : 'Diagnose with AI'}
+            </>
+          )}
+        </button>
+        {diagnosisError && (
+          <p className="mt-2 text-sm text-noc-red text-center">{diagnosisError}</p>
+        )}
+      </div>
+
+      {/* AI Diagnosis Result */}
+      {(diagnosisResult || incident.reasoning_trace) && (
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-noc-text uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Brain className="w-4 h-4 text-noc-cyan" />
+            AI Diagnosis
+          </h3>
+          <div className="p-4 rounded-lg bg-noc-bg/50 border border-noc-cyan/20">
+            <pre className="text-sm text-noc-text whitespace-pre-wrap font-sans leading-relaxed">
+              {diagnosisResult || incident.reasoning_trace}
+            </pre>
+          </div>
+        </div>
+      )}
 
       {/* Hypotheses */}
       {(incident.hypotheses?.length ?? 0) > 0 && (
@@ -274,13 +334,6 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Reasoning Trace */}
-      {incident.reasoning_trace && (
-        <div className="mb-6">
-          <ReasoningTrace trace={incident.reasoning_trace} />
         </div>
       )}
 

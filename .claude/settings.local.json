@@ -120,7 +120,19 @@
       "Bash(curl -s \"http://localhost:8000/api/v1/topology\" | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Total size:', len\\(json.dumps\\(d\\)\\), 'chars'\\); print\\('Keys:', list\\(d.keys\\(\\)\\)\\)\" 2>&1)",
       "Bash(curl -s http://localhost:8001/api/v1/decisions/pending | python3 -m json.tool 2>&1 | head -30)",
       "Bash(curl -s http://localhost:8001/api/v1/decisions?limit=10 | python3 -m json.tool 2>&1 | head -40)",
-      "Bash(docker compose stop agent)"
+      "Bash(docker compose stop agent)",
+      "Bash(docker compose build agent dashboard-agent 2>&1 | tail -10)",
+      "Bash(docker compose up -d agent dashboard-agent 2>&1)",
+      "Bash(curl -s http://localhost:8001/api/v1/incidents | python3 -m json.tool 2>&1 | head -30)",
+      "Bash(docker logs autonomousnetwork-agent-1 2>&1 | grep -E '\"event\"' | python3 -c \"\nimport sys, json\nfor line in sys.stdin:\n    try:\n        d = json.loads\\(line.strip\\(\\)\\)\n        ev = d.get\\('event',''\\)\n        if ev not in \\('ws_agent_connected','ws_agent_disconnected'\\):\n            print\\(f\\\\\"{d.get\\('timestamp',''\\)[:19]} {ev} {json.dumps\\({k:v for k,v in d.items\\(\\) if k not in \\('event','level','timestamp','exception'\\)}\\)}\\\\\"\\)\n    except: pass\n\" | head -30)",
+      "Bash(sleep 20 && docker logs autonomousnetwork-agent-1 2>&1 | grep -E '\"event\"' | python3 -c \"\nimport sys, json\nfor line in sys.stdin:\n    try:\n        d = json.loads\\(line.strip\\(\\)\\)\n        ev = d.get\\('event',''\\)\n        if ev not in \\('ws_agent_connected','ws_agent_disconnected'\\):\n            print\\(f\\\\\"{d.get\\('timestamp',''\\)[:19]} {ev} {json.dumps\\({k:v for k,v in d.items\\(\\) if k not in \\('event','level','timestamp','exception'\\)}\\)}\\\\\"\\)\n    except: pass\n\")",
+      "Bash(curl -s http://localhost:8001/api/v1/incidents | python3 -m json.tool)",
+      "Bash(sleep 5 && docker compose logs agent --tail=30 2>&1)",
+      "Bash(docker compose exec postgres psql -U netops -c \"\\\\d incidents\" 2>&1)",
+      "Bash(docker compose build agent 2>&1 | tail -5 && docker compose up -d agent 2>&1)",
+      "Bash(sleep 15 && docker compose logs agent --tail=30 2>&1)",
+      "Bash(curl -s http://localhost:8001/api/v1/decisions/pending | python3 -m json.tool 2>&1)",
+      "Bash(sleep 20 && docker compose logs agent --tail=25 2>&1)"
     ]
   }
 }

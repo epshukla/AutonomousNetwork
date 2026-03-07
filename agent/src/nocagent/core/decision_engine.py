@@ -71,13 +71,14 @@ class DecisionEngine:
         mode = settings.agent_mode
 
         # Determine status based on tier and mode
+        # Tier 1: auto-execute always
+        # Tier 2: auto-execute in autonomous mode
+        # Tier 3-4: always require human approval (show in Approval Panel)
         if mode == "observe-only":
             status = "pending"
         elif tier == 1:
             status = "executed"
         elif tier == 2 and mode == "autonomous":
-            status = "executed"
-        elif tier <= 3 and mode == "autonomous":
             status = "executed"
         else:
             status = "pending"

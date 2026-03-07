@@ -60,7 +60,7 @@ services:
       CLAUDE_API_KEY: ${CLAUDE_API_KEY}
       CLAUDE_MODEL: claude-sonnet-4-20250514
       AGENT_MODE: autonomous
-      OBSERVE_INTERVAL_SECONDS: "10"
+      OBSERVE_INTERVAL_SECONDS: "30"
     ports: ["8001:8001"]
     depends_on:
       simulator: {condition: service_healthy}

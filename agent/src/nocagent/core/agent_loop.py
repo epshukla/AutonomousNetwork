@@ -1,24 +1,24 @@
 """
-Main OODA + Learn agent loop.
+Main agent loop — Observe + Detect + Auto-Incident + Learn.
 
-Observe → Orient (detect anomalies) → Decide (Claude reasoning) →
-Act (execute/recommend) → Learn (update thresholds)
+Claude is NOT called in the loop. Claude is only called on-demand
+when a user clicks "Diagnose" on an incident in the dashboard.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime, timezone
 
 import structlog
+from sqlalchemy import text
 
 from nocagent.config.settings import settings
 from nocagent.core.observer import observer
 from nocagent.core.anomaly_detector import anomaly_detector, Anomaly
-from nocagent.core.reasoner import reasoner
-from nocagent.core.decision_engine import decision_engine
-from nocagent.core.executor import executor
 from nocagent.core.learner import learner
+from nocagent.db.engine import async_session
 from nocagent.events import agent_event_bus
 
 logger = structlog.get_logger()
@@ -93,7 +93,7 @@ class NOCAgent:
         while self._running:
             try:
                 if not self._paused:
-                    await self._ooda_cycle()
+                    await self._observe_and_detect()
                     self._loop_count += 1
             except asyncio.CancelledError:
                 break
@@ -101,7 +101,9 @@ class NOCAgent:
                 logger.exception("agent_loop_error", error=str(exc), error_type=type(exc).__name__)
             await asyncio.sleep(settings.observe_interval_seconds)
 
-    async def _ooda_cycle(self):
+    async def _observe_and_detect(self):
+        """Observe → Detect → Auto-create incidents. NO Claude calls."""
+
         # 1. OBSERVE — collect latest telemetry
         telemetry = await observer.observe()
         if not telemetry:
@@ -114,16 +116,11 @@ class NOCAgent:
 
         self._anomalies_detected += len(anomalies)
 
-        # Deduplicate: only process if we have critical/emergency anomalies
-        # or more than 2 warnings
+        # Only create incidents for critical/emergency anomalies or 3+ warnings
         critical_anomalies = [
             a for a in anomalies if a.severity in ("critical", "emergency")
         ]
         if not critical_anomalies and len(anomalies) < 3:
-            logger.debug(
-                "anomalies_below_reasoning_threshold",
-                count=len(anomalies),
-            )
             return
 
         await agent_event_bus.publish("anomalies_detected", {
@@ -132,21 +129,11 @@ class NOCAgent:
             "types": list({a.anomaly_type for a in anomalies}),
         })
 
-        # 3. DECIDE — use Claude to diagnose and plan
-        diagnosis = await reasoner.diagnose(anomalies, telemetry)
+        # 3. AUTO-CREATE INCIDENT (no Claude — just DB insert)
+        await self._auto_create_incident(anomalies, telemetry)
 
-        # The reasoner already executed tool calls (including create_incident,
-        # rate_limit, etc.) through Claude's tool-use loop. The tools
-        # themselves create incidents and decisions.
-
-        # 4. ACT — execute any approved/pending decisions
-        pending = await decision_engine.get_pending_decisions()
-        for decision in pending:
-            if decision["autonomy_tier"] <= 2 and self._mode == "autonomous":
-                await executor.execute_decision(decision)
-
-        # 5. LEARN — update thresholds based on outcomes
-        for anomaly in anomalies[:3]:  # Learn from top anomalies
+        # 4. LEARN — update thresholds based on anomaly patterns
+        for anomaly in anomalies[:3]:
             await learner.learn(
                 incident_id=None,
                 decision_id=None,
@@ -154,6 +141,117 @@ class NOCAgent:
                 anomaly_type=anomaly.anomaly_type,
                 metric=anomaly.metric,
                 threshold_used=anomaly.threshold,
+            )
+
+    async def _auto_create_incident(
+        self, anomalies: list[Anomaly], telemetry: dict
+    ):
+        """Create an incident from anomalies without calling Claude."""
+
+        # Determine severity from worst anomaly
+        if any(a.severity == "emergency" for a in anomalies):
+            severity = "emergency"
+        elif any(a.severity == "critical" for a in anomalies):
+            severity = "critical"
+        else:
+            severity = "warning"
+
+        # Collect affected devices and links
+        affected_devices = list({
+            a.source_id for a in anomalies if a.source_type == "device"
+        })
+        affected_links = list({
+            a.source_id for a in anomalies if a.source_type == "link"
+        })
+
+        # Build a descriptive title from anomalies
+        anomaly_types = list({a.anomaly_type for a in anomalies})
+        type_labels = {
+            "link_down": "Link Down",
+            "high_utilization": "High Utilization",
+            "packet_loss": "Packet Loss",
+            "device_down": "Device Down",
+            "high_cpu": "High CPU",
+            "high_memory": "High Memory",
+            "high_temperature": "High Temperature",
+            "bgp_session_down": "BGP Session Down",
+            "bgp_flapping": "BGP Flapping",
+        }
+        type_desc = ", ".join(type_labels.get(t, t) for t in anomaly_types[:3])
+        sources = ", ".join(
+            a.source_id for a in anomalies[:3]
+        )
+        title = f"{severity.upper()}: {type_desc} — {sources}"
+
+        # Build hypothesis from anomaly descriptions
+        hypothesis = "; ".join(a.description for a in anomalies[:5])
+
+        # Deduplicate: check if a similar open incident already exists
+        async with async_session() as session:
+            result = await session.execute(
+                text(
+                    "SELECT id FROM incidents "
+                    "WHERE status NOT IN ('resolved') "
+                    "AND title = :title "
+                    "AND detected_at > NOW() - INTERVAL '5 minutes' "
+                    "LIMIT 1"
+                ),
+                {"title": title},
+            )
+            if result.fetchone():
+                return  # Already have this incident
+
+        # Insert in a separate session to avoid transaction nesting
+        async with async_session() as session:
+            async with session.begin():
+                result = await session.execute(
+                    text(
+                        "INSERT INTO incidents (title, severity, status, "
+                        "affected_devices, affected_links, root_cause_hypothesis) "
+                        "VALUES (:title, :severity, 'open', "
+                        ":affected_devices, :affected_links, :hypothesis) "
+                        "RETURNING id"
+                    ),
+                    {
+                        "title": title,
+                        "severity": severity,
+                        "affected_devices": affected_devices or None,
+                        "affected_links": affected_links or None,
+                        "hypothesis": hypothesis,
+                    },
+                )
+                incident_id = result.scalar_one()
+
+        self._incidents_created += 1
+
+        await agent_event_bus.publish("incident_created", {
+            "incident_id": incident_id,
+            "title": title,
+            "severity": severity,
+        })
+
+        logger.info(
+            "auto_incident_created",
+            incident_id=incident_id,
+            severity=severity,
+            anomaly_count=len(anomalies),
+        )
+
+        # Auto-diagnose with Claude (1 API call per new incident)
+        # This creates decision records that show in the Approval Panel
+        try:
+            from nocagent.core.reasoner import reasoner
+            result = await reasoner.diagnose_incident(incident_id)
+            logger.info(
+                "auto_diagnosis_complete",
+                incident_id=incident_id,
+                actions_proposed=result.get("actions_proposed", 0),
+            )
+        except Exception as exc:
+            logger.warning(
+                "auto_diagnosis_failed",
+                incident_id=incident_id,
+                error=str(exc),
             )
 
 

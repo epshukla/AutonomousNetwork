@@ -226,6 +226,20 @@ export async function getAgentStatus(): Promise<AgentStatus> {
   }
 }
 
+// AI Diagnosis — triggers single Claude API call for an incident
+export interface DiagnosisResult {
+  incident_id: number;
+  diagnosis: string;
+  actions_proposed: number;
+  decision_ids: number[];
+}
+
+export async function diagnoseIncident(incidentId: string): Promise<DiagnosisResult> {
+  return fetchJSON<DiagnosisResult>(`${AGENT_URL}/api/v1/incidents/${incidentId}/diagnose`, {
+    method: 'POST',
+  });
+}
+
 // Agent control actions
 export async function pauseAgent(): Promise<void> {
   await fetchJSON(`${AGENT_URL}/api/v1/agent/pause`, { method: 'POST' });
