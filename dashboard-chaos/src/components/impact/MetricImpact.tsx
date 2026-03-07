@@ -58,7 +58,8 @@ export const MetricImpact: React.FC<MetricImpactProps> = ({
     });
   }, [data, metricKey]);
 
-  const currentValue = chartData.length > 0 ? chartData[chartData.length - 1].value : null;
+  const rawCurrentValue = chartData.length > 0 ? chartData[chartData.length - 1].value : null;
+  const currentValue = typeof rawCurrentValue === 'number' && isFinite(rawCurrentValue) ? rawCurrentValue : null;
 
   const getStatus = () => {
     if (currentValue === null || baseline === null || baseline === undefined) return 'normal';

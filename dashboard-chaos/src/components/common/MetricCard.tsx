@@ -50,7 +50,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       </div>
       <div className="flex items-baseline gap-1">
         <span className={`text-${compact ? '2xl' : '3xl'} font-bold ${statusColors[status]} tabular-nums`}>
-          {typeof value === 'number' ? value.toFixed(1) : value}
+          {typeof value === 'number' && isFinite(value) ? value.toFixed(1) : String(value ?? '--')}
         </span>
         {unit && <span className="text-sm text-noc-muted">{unit}</span>}
       </div>

@@ -31,7 +31,7 @@ class Executor:
         })
 
         try:
-            result = await handle_tool_call(action_type, parameters)
+            result = await handle_tool_call(action_type, parameters, from_executor=True)
 
             import json
             result_data = json.loads(result)

@@ -422,10 +422,23 @@ export async function getAgentMetrics(): Promise<AgentMetrics> {
   }
 }
 
-// Learning Records (thresholds endpoint)
+// Learning Records (thresholds endpoint returns a dict, not an array — transform to display format)
 export async function getLearningRecords(): Promise<LearningRecord[]> {
   try {
-    return await fetchJSON<LearningRecord[]>(`${AGENT_URL}/api/v1/learning/thresholds`);
+    const raw = await fetchJSON<any>(`${AGENT_URL}/api/v1/learning/thresholds`);
+    // Backend returns a flat dict of current thresholds, not an array of records
+    if (Array.isArray(raw)) return raw;
+    // Transform thresholds dict into display records
+    return Object.entries(raw).map(([metric, value], i) => ({
+      id: String(i),
+      timestamp: new Date().toISOString(),
+      incident_type: 'threshold_tuning',
+      lesson: `Current threshold for ${metric.replace(/_/g, ' ')}`,
+      threshold_before: 0,
+      threshold_after: value as number,
+      metric,
+      improvement: 0,
+    }));
   } catch {
     return [];
   }

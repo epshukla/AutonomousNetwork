@@ -44,6 +44,13 @@ async def list_decisions(limit: int = 100):
         ]
 
 
+# IMPORTANT: /decisions/pending must be before /decisions/{decision_id}
+# to avoid FastAPI matching "pending" as an integer decision_id
+@router.get("/decisions/pending")
+async def get_pending_decisions():
+    return await decision_engine.get_pending_decisions()
+
+
 @router.get("/decisions/{decision_id}")
 async def get_decision(decision_id: int):
     async with async_session() as session:
@@ -76,8 +83,3 @@ async def get_decision(decision_id: int):
             "outcome_success": r.outcome_success,
             "blast_radius_estimate": r.blast_radius_estimate,
         }
-
-
-@router.get("/decisions/pending")
-async def get_pending_decisions():
-    return await decision_engine.get_pending_decisions()

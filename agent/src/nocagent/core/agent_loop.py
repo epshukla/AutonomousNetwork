@@ -97,8 +97,8 @@ class NOCAgent:
                     self._loop_count += 1
             except asyncio.CancelledError:
                 break
-            except Exception:
-                logger.exception("agent_loop_error")
+            except Exception as exc:
+                logger.exception("agent_loop_error", error=str(exc), error_type=type(exc).__name__)
             await asyncio.sleep(settings.observe_interval_seconds)
 
     async def _ooda_cycle(self):

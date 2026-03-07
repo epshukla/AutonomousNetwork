@@ -5,7 +5,8 @@ interface HealthBadgeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export const HealthBadge: React.FC<HealthBadgeProps> = ({ score, size = 'md' }) => {
+export const HealthBadge: React.FC<HealthBadgeProps> = ({ score: rawScore, size = 'md' }) => {
+  const score = typeof rawScore === 'number' && isFinite(rawScore) ? rawScore : 0;
   const getColor = () => {
     if (score >= 90) return { text: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/30' };
     if (score >= 70) return { text: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/30' };
