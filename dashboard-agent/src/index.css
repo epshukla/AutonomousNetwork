@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --noc-bg: #0a0e27;
+    --noc-surface: #111638;
+    --noc-card: #161b4a;
+    --noc-border: #1e2560;
+    --noc-cyan: #00d4ff;
+    --noc-green: #00ff88;
+    --noc-red: #ff4444;
+    --noc-amber: #ffaa00;
+  }
+
+  body {
+    background: var(--noc-bg);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--noc-bg);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--noc-border);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--noc-cyan);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-noc-card/60 backdrop-blur-xl border border-noc-border/50 rounded-xl;
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:border-noc-cyan/30 hover:shadow-lg hover:shadow-noc-cyan/5;
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), 0 0 60px rgba(0, 212, 255, 0.05);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.15), 0 0 60px rgba(0, 255, 136, 0.05);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.15), 0 0 60px rgba(255, 68, 68, 0.05);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 20px rgba(255, 170, 0, 0.15), 0 0 60px rgba(255, 170, 0, 0.05);
+  }
+
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+  }
+
+  .text-glow-green {
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  }
+
+  .noc-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-noc-cyan to-noc-green;
+  }
+
+  .noc-input {
+    @apply bg-noc-bg/80 border border-noc-border/50 rounded-lg px-3 py-2 text-sm text-noc-text
+           focus:outline-none focus:border-noc-cyan/50 focus:ring-1 focus:ring-noc-cyan/20 transition-all;
+  }
+
+  .noc-btn {
+    @apply px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .noc-btn-primary {
+    @apply noc-btn bg-noc-cyan/20 text-noc-cyan border border-noc-cyan/30
+           hover:bg-noc-cyan/30 hover:shadow-lg hover:shadow-noc-cyan/20;
+  }
+
+  .noc-btn-danger {
+    @apply noc-btn bg-noc-red/20 text-noc-red border border-noc-red/30
+           hover:bg-noc-red/30 hover:shadow-lg hover:shadow-noc-red/20;
+  }
+
+  .noc-btn-success {
+    @apply noc-btn bg-noc-green/20 text-noc-green border border-noc-green/30
+           hover:bg-noc-green/30 hover:shadow-lg hover:shadow-noc-green/20;
+  }
+
+  /* Scan line effect for dramatic cards */
+  .scan-effect {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-effect::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--noc-cyan), transparent);
+    animation: scan-line 3s linear infinite;
+    opacity: 0.3;
+  }
+
+  /* Grid pattern background */
+  .grid-pattern {
+    background-image:
+      linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+@keyframes scan-line {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+
+/* Recharts custom styling */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #1e2560;
+  stroke-opacity: 0.5;
+}
+
+.recharts-text {
+  fill: #8892b0;
+  font-size: 11px;
+}

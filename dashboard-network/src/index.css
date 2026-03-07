@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #1e2560 #0a0e27;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #0a0e27;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #1e2560;
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #2a3070;
+  }
+
+  ::selection {
+    background: rgba(0, 212, 255, 0.3);
+    color: #ffffff;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply relative overflow-hidden rounded-xl border border-noc-border/50;
+    background: linear-gradient(
+      135deg,
+      rgba(22, 27, 74, 0.8) 0%,
+      rgba(17, 22, 56, 0.6) 100%
+    );
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(0, 212, 255, 0.3),
+      transparent
+    );
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+
+  .glass-card-hover:hover {
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .glow-text-cyan {
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5), 0 0 20px rgba(0, 212, 255, 0.3);
+  }
+
+  .glow-text-green {
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5), 0 0 20px rgba(0, 255, 136, 0.3);
+  }
+
+  .glow-text-red {
+    color: #ff4444;
+    text-shadow: 0 0 10px rgba(255, 68, 68, 0.5), 0 0 20px rgba(255, 68, 68, 0.3);
+  }
+
+  .glow-text-amber {
+    color: #ffaa00;
+    text-shadow: 0 0 10px rgba(255, 170, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.3);
+  }
+
+  .noc-gradient-bg {
+    background: radial-gradient(
+        ellipse at 20% 50%,
+        rgba(0, 212, 255, 0.05) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse at 80% 20%,
+        rgba(0, 255, 136, 0.03) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse at 50% 80%,
+        rgba(168, 85, 247, 0.03) 0%,
+        transparent 50%
+      ),
+      #0a0e27;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-noc-muted transition-all duration-200 hover:text-noc-text hover:bg-noc-surface/50;
+  }
+
+  .sidebar-link-active {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-noc-cyan bg-noc-cyan/10 border border-noc-cyan/20;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
+  }
+
+  .gauge-ring {
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-in-out;
+  }
+
+  .grid-pattern {
+    background-image: linear-gradient(
+        rgba(30, 37, 96, 0.3) 1px,
+        transparent 1px
+      ),
+      linear-gradient(90deg, rgba(30, 37, 96, 0.3) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+}
+
+/* React Flow overrides */
+.react-flow__background {
+  background-color: #0a0e27 !important;
+}
+
+.react-flow__minimap {
+  background-color: #111638 !important;
+  border: 1px solid #1e2560 !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__controls {
+  border: 1px solid #1e2560 !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: #161b4a !important;
+  border-color: #1e2560 !important;
+  color: #94a3b8 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #1e2560 !important;
+  color: #00d4ff !important;
+}
+
+/* Recharts overrides */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #1e2560 !important;
+}
+
+.recharts-text {
+  fill: #94a3b8 !important;
+  font-size: 11px !important;
+}

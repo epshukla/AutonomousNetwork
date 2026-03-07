@@ -1,0 +1,109 @@
+x-common-env: &common-env
+  DATABASE_URL: postgresql+asyncpg://netops:netops@postgres:5432/netops
+  REDIS_URL: redis://redis:6379/0
+  LOG_LEVEL: INFO
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: netops
+      POSTGRES_PASSWORD: netops
+      POSTGRES_DB: netops
+    ports: ["5432:5432"]
+    volumes: [postgres_data:/home/postgres/pgdata/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netops"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks: [netops-net]
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks: [netops-net]
+
+  simulator:
+    build: {context: ./simulator, dockerfile: Dockerfile}
+    environment:
+      <<: *common-env
+      SIMULATOR_HOST: "0.0.0.0"
+      SIMULATOR_PORT: "8000"
+      TELEMETRY_INTERVAL_SECONDS: "5"
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks: [netops-net]
+    restart: unless-stopped
+
+  agent:
+    build: {context: ./agent, dockerfile: Dockerfile}
+    environment:
+      <<: *common-env
+      AGENT_HOST: "0.0.0.0"
+      AGENT_PORT: "8001"
+      SIMULATOR_URL: http://simulator:8000
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+      CLAUDE_MODEL: claude-sonnet-4-20250514
+      AGENT_MODE: autonomous
+      OBSERVE_INTERVAL_SECONDS: "10"
+    ports: ["8001:8001"]
+    depends_on:
+      simulator: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks: [netops-net]
+    restart: unless-stopped
+
+  dashboard-network:
+    build: {context: ./dashboard-network, dockerfile: Dockerfile}
+    environment:
+      VITE_SIMULATOR_URL: http://localhost:8000
+    ports: ["5173:80"]
+    depends_on: [simulator]
+    networks: [netops-net]
+
+  dashboard-agent:
+    build: {context: ./dashboard-agent, dockerfile: Dockerfile}
+    environment:
+      VITE_AGENT_URL: http://localhost:8001
+      VITE_SIMULATOR_URL: http://localhost:8000
+    ports: ["5174:80"]
+    depends_on: [agent]
+    networks: [netops-net]
+
+  dashboard-chaos:
+    build: {context: ./dashboard-chaos, dockerfile: Dockerfile}
+    environment:
+      VITE_SIMULATOR_URL: http://localhost:8000
+      VITE_AGENT_URL: http://localhost:8001
+    ports: ["5175:80"]
+    depends_on: [simulator]
+    networks: [netops-net]
+
+volumes:
+  postgres_data:
+
+networks:
+  netops-net:
+    driver: bridge

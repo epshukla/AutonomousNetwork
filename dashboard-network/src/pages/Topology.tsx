@@ -1,0 +1,494 @@
+import React, { useMemo, useState, useCallback } from 'react';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  type Node,
+  type Edge,
+  type OnSelectionChangeFunc,
+  MarkerType,
+  BackgroundVariant,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  X,
+  Server,
+  Link2,
+  Cpu,
+  HardDrive,
+  Thermometer,
+  Activity,
+  Clock,
+  AlertTriangle,
+  Gauge,
+} from 'lucide-react';
+
+import DeviceNodeComponent, {
+  type DeviceNodeData,
+} from '../components/topology/DeviceNode';
+import LinkEdge, { type LinkEdgeData } from '../components/topology/LinkEdge';
+import HealthBadge from '../components/common/HealthBadge';
+import StatusDot from '../components/common/StatusDot';
+import { useTopology, useWSTelemetry } from '../hooks/useTelemetry';
+import type { DeviceData, LinkData } from '../api/simulator';
+
+const nodeTypes = { device: DeviceNodeComponent };
+const edgeTypes = { link: LinkEdge };
+
+// Layout helper: position devices based on city
+function layoutDevices(
+  devices: DeviceData[]
+): Node<DeviceNodeData>[] {
+  const delhiDevices = devices.filter(
+    (d) => d.city?.toLowerCase().includes('delhi') || d.city?.toLowerCase().includes('del')
+  );
+  const mumbaiDevices = devices.filter(
+    (d) => d.city?.toLowerCase().includes('mumbai') || d.city?.toLowerCase().includes('mum') || d.city?.toLowerCase().includes('bom')
+  );
+  const otherDevices = devices.filter(
+    (d) => !delhiDevices.includes(d) && !mumbaiDevices.includes(d)
+  );
+
+  const nodes: Node<DeviceNodeData>[] = [];
+  const ySpacing = 140;
+  const xLeft = 50;
+  const xRight = 600;
+  const xMid = 325;
+
+  const toNodeData = (device: DeviceData): DeviceNodeData => ({
+    label: device.device_id,
+    type: device.type,
+    status: device.status,
+    cpu_usage: device.cpu_utilization,
+    memory_usage: device.memory_utilization,
+    temperature: device.temperature_celsius,
+    location: device.city,
+  });
+
+  delhiDevices.forEach((device, i) => {
+    nodes.push({
+      id: device.device_id,
+      type: 'device',
+      position: { x: xLeft, y: 60 + i * ySpacing },
+      data: toNodeData(device),
+    });
+  });
+
+  mumbaiDevices.forEach((device, i) => {
+    nodes.push({
+      id: device.device_id,
+      type: 'device',
+      position: { x: xRight, y: 60 + i * ySpacing },
+      data: toNodeData(device),
+    });
+  });
+
+  otherDevices.forEach((device, i) => {
+    nodes.push({
+      id: device.device_id,
+      type: 'device',
+      position: { x: xMid, y: 60 + i * ySpacing },
+      data: toNodeData(device),
+    });
+  });
+
+  // If no location-based grouping worked, lay all out in grid
+  if (nodes.length === 0) {
+    devices.forEach((device, i) => {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      nodes.push({
+        id: device.device_id,
+        type: 'device',
+        position: { x: 50 + col * 280, y: 60 + row * ySpacing },
+        data: toNodeData(device),
+      });
+    });
+  }
+
+  return nodes;
+}
+
+function layoutEdges(
+  links: LinkData[]
+): Edge<LinkEdgeData>[] {
+  return links.map((link) => ({
+    id: link.link_id,
+    source: link.from,
+    target: link.to,
+    type: 'link',
+    data: {
+      status: link.status === 'up' ? 'healthy' : link.status as 'degraded' | 'down',
+      utilization: link.utilization_percent,
+      latency_ms: link.latency_ms,
+      packet_loss: link.packet_loss_percent,
+      throughput_gbps: link.throughput_gbps,
+      bandwidth_gbps: link.capacity_gbps,
+    },
+  }));
+}
+
+// ── Detail Panel ───────────────────────────────────────────
+
+interface DetailPanelProps {
+  type: 'device' | 'link';
+  data: DeviceNodeData | (LinkEdgeData & { id: string; source: string; target: string });
+  onClose: () => void;
+}
+
+function DetailPanel({ type, data, onClose }: DetailPanelProps) {
+  const isDevice = type === 'device';
+  const d = data as any;
+
+  return (
+    <motion.div
+      initial={{ x: 320, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 320, opacity: 0 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="absolute right-0 top-0 bottom-0 w-80 z-20 border-l border-noc-border/50 bg-noc-bg/95 backdrop-blur-xl overflow-y-auto"
+    >
+      <div className="p-5 space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isDevice ? (
+              <Server className="w-5 h-5 text-noc-cyan" />
+            ) : (
+              <Link2 className="w-5 h-5 text-noc-cyan" />
+            )}
+            <h3 className="text-lg font-bold text-white">
+              {isDevice ? d.label : d.id}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-noc-surface/50 text-noc-muted hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <HealthBadge status={d.status} size="md" />
+
+        {/* Metrics */}
+        <div className="space-y-3">
+          {isDevice ? (
+            <>
+              <MetricRow
+                icon={<Cpu className="w-4 h-4 text-noc-cyan" />}
+                label="CPU Usage"
+                value={`${d.cpu_usage?.toFixed(1)}%`}
+                bar={d.cpu_usage}
+                barColor={
+                  d.cpu_usage > 90 ? 'bg-noc-red' : d.cpu_usage > 70 ? 'bg-noc-amber' : 'bg-noc-cyan'
+                }
+              />
+              <MetricRow
+                icon={<HardDrive className="w-4 h-4 text-noc-purple" />}
+                label="Memory"
+                value={`${d.memory_usage?.toFixed(1)}%`}
+                bar={d.memory_usage}
+                barColor={
+                  d.memory_usage > 90 ? 'bg-noc-red' : d.memory_usage > 70 ? 'bg-noc-amber' : 'bg-noc-purple'
+                }
+              />
+              <MetricRow
+                icon={<Thermometer className="w-4 h-4 text-noc-amber" />}
+                label="Temperature"
+                value={`${d.temperature?.toFixed(0)} C`}
+              />
+              <div className="glass-card p-3 text-xs text-noc-muted">
+                <div className="flex justify-between mb-1">
+                  <span>Type</span>
+                  <span className="text-noc-text capitalize">
+                    {d.type?.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Location</span>
+                  <span className="text-noc-text">{d.location}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <MetricRow
+                icon={<Activity className="w-4 h-4 text-noc-cyan" />}
+                label="Utilization"
+                value={`${d.utilization?.toFixed(1)}%`}
+                bar={d.utilization}
+                barColor={
+                  d.utilization > 90 ? 'bg-noc-red' : d.utilization > 70 ? 'bg-noc-amber' : 'bg-noc-cyan'
+                }
+              />
+              <MetricRow
+                icon={<Clock className="w-4 h-4 text-noc-amber" />}
+                label="Latency"
+                value={`${d.latency_ms?.toFixed(2)} ms`}
+              />
+              <MetricRow
+                icon={<AlertTriangle className="w-4 h-4 text-noc-red" />}
+                label="Packet Loss"
+                value={`${d.packet_loss?.toFixed(3)}%`}
+              />
+              <MetricRow
+                icon={<Gauge className="w-4 h-4 text-noc-green" />}
+                label="Throughput"
+                value={`${d.throughput_gbps?.toFixed(2)} Gbps`}
+              />
+              <div className="glass-card p-3 text-xs text-noc-muted">
+                <div className="flex justify-between mb-1">
+                  <span>Bandwidth</span>
+                  <span className="text-noc-text">{d.bandwidth_gbps} Gbps</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span>Source</span>
+                  <span className="text-noc-text">{d.source}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Target</span>
+                  <span className="text-noc-text">{d.target}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function MetricRow({
+  icon,
+  label,
+  value,
+  bar,
+  barColor,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  bar?: number;
+  barColor?: string;
+}) {
+  return (
+    <div className="glass-card p-3">
+      <div className="flex items-center gap-2 mb-1.5">
+        {icon}
+        <span className="text-xs text-noc-muted flex-1">{label}</span>
+        <span className="text-sm font-bold text-white">{value}</span>
+      </div>
+      {bar !== undefined && (
+        <div className="h-1.5 bg-noc-bg/80 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${barColor || 'bg-noc-cyan'}`}
+            style={{ width: `${Math.min(bar, 100)}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Topology Page ─────────────────────────────────────
+
+export default function Topology() {
+  const { devices, links, loading } = useTopology(3000);
+  const { latestTelemetry } = useWSTelemetry(60);
+
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+
+  // Merge live telemetry into topology data
+  const mergedDevices = useMemo(() => {
+    if (!latestTelemetry?.devices) return devices;
+    return devices.map((d) => {
+      const live = latestTelemetry.devices[d.device_id];
+      if (live) {
+        return {
+          ...d,
+          cpu_utilization: live.cpu_utilization ?? d.cpu_utilization,
+          memory_utilization: live.memory_utilization ?? d.memory_utilization,
+          temperature_celsius: live.temperature_celsius ?? d.temperature_celsius,
+          status: (live.status as typeof d.status) ?? d.status,
+        };
+      }
+      return d;
+    });
+  }, [devices, latestTelemetry]);
+
+  const mergedLinks = useMemo(() => {
+    if (!latestTelemetry?.links) return links;
+    return links.map((l) => {
+      const live = latestTelemetry.links[l.link_id];
+      if (live) {
+        return {
+          ...l,
+          utilization_percent: live.utilization_percent ?? l.utilization_percent,
+          latency_ms: live.latency_ms ?? l.latency_ms,
+          packet_loss_percent: live.packet_loss_percent ?? l.packet_loss_percent,
+          throughput_gbps: live.throughput_gbps ?? l.throughput_gbps,
+          status: (live.status as typeof l.status) ?? l.status,
+        };
+      }
+      return l;
+    });
+  }, [links, latestTelemetry]);
+
+  const nodes = useMemo(() => layoutDevices(mergedDevices), [mergedDevices]);
+  const edges = useMemo(() => layoutEdges(mergedLinks), [mergedLinks]);
+
+  const onSelectionChange: OnSelectionChangeFunc = useCallback(
+    ({ nodes: selNodes, edges: selEdges }) => {
+      if (selNodes.length > 0) {
+        setSelectedNode(selNodes[0].id);
+        setSelectedEdge(null);
+      } else if (selEdges.length > 0) {
+        setSelectedEdge(selEdges[0].id);
+        setSelectedNode(null);
+      }
+    },
+    []
+  );
+
+  const closePanel = useCallback(() => {
+    setSelectedNode(null);
+    setSelectedEdge(null);
+  }, []);
+
+  // Get detail data
+  const selectedDeviceData = useMemo(() => {
+    if (!selectedNode) return null;
+    const node = nodes.find((n) => n.id === selectedNode);
+    return node?.data || null;
+  }, [selectedNode, nodes]);
+
+  const selectedLinkData = useMemo(() => {
+    if (!selectedEdge) return null;
+    const edge = edges.find((e) => e.id === selectedEdge);
+    if (!edge?.data) return null;
+    return { ...edge.data, id: edge.id, source: edge.source, target: edge.target };
+  }, [selectedEdge, edges]);
+
+  if (loading && devices.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-noc-cyan/30 border-t-noc-cyan rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-noc-muted text-sm">Loading topology...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full relative overflow-hidden">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 pointer-events-none">
+        <div className="flex items-center justify-between pointer-events-auto">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Network Topology</h1>
+            <p className="text-sm text-noc-muted">
+              {mergedDevices.length} devices, {mergedLinks.length} links
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Legend */}
+            <div className="glass-card px-4 py-2 flex items-center gap-4">
+              {[
+                { status: 'healthy', label: 'Healthy' },
+                { status: 'degraded', label: 'Degraded' },
+                { status: 'critical', label: 'Critical' },
+                { status: 'down', label: 'Down' },
+              ].map((item) => (
+                <div key={item.status} className="flex items-center gap-1.5">
+                  <StatusDot
+                    status={item.status}
+                    size="sm"
+                    pulse={false}
+                  />
+                  <span className="text-xs text-noc-muted">
+                    {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* React Flow Canvas */}
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onSelectionChange={onSelectionChange}
+        fitView
+        fitViewOptions={{ padding: 0.3 }}
+        minZoom={0.3}
+        maxZoom={2}
+        defaultEdgeOptions={{
+          type: 'link',
+          markerEnd: { type: MarkerType.Arrow, width: 15, height: 15 },
+        }}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={30}
+          size={1}
+          color="#1e2560"
+        />
+        <Controls
+          showInteractive={false}
+          position="bottom-left"
+        />
+        <MiniMap
+          nodeStrokeColor={(n) => {
+            const status = (n.data as DeviceNodeData)?.status;
+            return status === 'healthy'
+              ? '#00ff88'
+              : status === 'degraded'
+              ? '#ffaa00'
+              : status === 'critical'
+              ? '#ff4444'
+              : '#555555';
+          }}
+          nodeColor={(n) => {
+            const status = (n.data as DeviceNodeData)?.status;
+            return status === 'healthy'
+              ? '#00ff8830'
+              : status === 'degraded'
+              ? '#ffaa0030'
+              : status === 'critical'
+              ? '#ff444430'
+              : '#55555530';
+          }}
+          maskColor="rgba(10,14,39,0.8)"
+          style={{ backgroundColor: '#111638' }}
+        />
+      </ReactFlow>
+
+      {/* Detail Panel */}
+      <AnimatePresence>
+        {selectedDeviceData && (
+          <DetailPanel
+            type="device"
+            data={selectedDeviceData}
+            onClose={closePanel}
+          />
+        )}
+        {selectedLinkData && (
+          <DetailPanel
+            type="link"
+            data={selectedLinkData}
+            onClose={closePanel}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
