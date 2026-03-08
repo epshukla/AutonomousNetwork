@@ -370,6 +370,82 @@ export async function getCertInReport(incidentType = 'network_intrusion'): Promi
   return request<CertInReport>(`/api/v1/compliance/certin-report?incident_type=${incidentType}`);
 }
 
+// ── Kill Switch ──────────────────────────────────────────
+
+export interface KillTarget {
+  target_type: 'device' | 'link';
+  target_id: string;
+}
+
+export interface BackupPath {
+  original_link: string;
+  backup_link: string;
+  description: string;
+  status: string;
+  hop_increase: number;
+  latency_increase_ms: number;
+}
+
+export interface RoutingAnalysis {
+  efficiency_percent: number;
+  total_paths: number;
+  healthy_paths: number;
+  rerouted_paths: number;
+  broken_paths: number;
+  avg_latency_increase_ms: number;
+}
+
+export interface CostImpact {
+  total_cost: number;
+  revenue_loss: number;
+  sla_penalty: number;
+  operational_cost: number;
+  affected_subscribers: number;
+  cost_per_second: number;
+  duration_seconds: number;
+}
+
+export interface KillResponse {
+  success: boolean;
+  target: KillTarget;
+  affected_links: string[];
+  backup_paths: BackupPath[];
+  routing_analysis: RoutingAnalysis;
+}
+
+export interface RestoreResponse {
+  success: boolean;
+  target: KillTarget;
+  restored_links: string[];
+}
+
+export interface KillSwitchStatus {
+  killed_devices: string[];
+  killed_links: string[];
+  kill_details: Record<string, { killed_at: string; affected_links?: string[] }>;
+  routing_efficiency: RoutingAnalysis;
+  cost_impact: CostImpact;
+  backup_paths: BackupPath[];
+}
+
+export async function killTarget(target: KillTarget): Promise<KillResponse> {
+  return request<KillResponse>('/api/v1/killswitch/kill', {
+    method: 'POST',
+    body: JSON.stringify(target),
+  });
+}
+
+export async function restoreTarget(target: KillTarget): Promise<RestoreResponse> {
+  return request<RestoreResponse>('/api/v1/killswitch/restore', {
+    method: 'POST',
+    body: JSON.stringify(target),
+  });
+}
+
+export async function getKillSwitchStatus(): Promise<KillSwitchStatus> {
+  return request<KillSwitchStatus>('/api/v1/killswitch/status');
+}
+
 // ── Events ───────────────────────────────────────────────
 // Events come from WebSocket only; no REST list endpoint currently.
 

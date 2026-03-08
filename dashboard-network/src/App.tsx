@@ -161,7 +161,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <ErrorBoundary>
+        <ErrorBoundary resetKey={location.pathname}>
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

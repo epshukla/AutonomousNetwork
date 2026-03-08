@@ -60,14 +60,14 @@ export default function ReasoningTrace({ trace, compact = false, title }: Reason
               <span className="text-[10px] font-mono font-bold text-noc-muted uppercase">{segment.lang}</span>
             </div>
             <pre className="p-4 bg-noc-bg/80 border border-noc-border/30 rounded-b-lg text-xs text-noc-text font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
-              {segment.content.trim()}
+              {(segment.content || '').trim()}
             </pre>
           </div>
         );
         continue;
       }
 
-      const lines = segment.content.split('\n');
+      const lines = (segment.content || '').split('\n');
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;

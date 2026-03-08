@@ -259,11 +259,49 @@ sudo lsof -i :8001
 - Launch a chaos scenario from the Chaos Dashboard (`:5175`)
 - Check agent logs: `docker compose logs -f agent`
 
+### AI Diagnose button shows "Error: Failed to fetch"
+
+This means the Claude API key is invalid or expired:
+
+```bash
+# 1. Check agent logs for the actual error
+docker compose logs --tail 30 agent | grep -i "error\|401\|auth"
+
+# 2. If you see "anthropic.AuthenticationError" or "invalid x-api-key":
+#    Get a new key from https://console.anthropic.com/settings/keys
+#    Update .env:
+#    CLAUDE_API_KEY=sk-ant-api03-YOUR-NEW-KEY-HERE
+
+# 3. Restart agent
+docker compose up -d agent
+```
+
+The CORS error that appears alongside is a side-effect — fix the API key and both errors go away.
+
 ### Dashboards show blank page
 
-- Open browser console (F12) for JavaScript errors
-- Verify backends are healthy: `curl http://localhost:8000/health` and `curl http://localhost:8001/health`
-- Rebuild dashboards: `docker compose build dashboard-agent && docker compose up -d dashboard-agent`
+This is typically caused by unguarded string method calls (`.replace()`, `.toUpperCase()`) on undefined values from API responses. Fixed in the codebase with null-coalescing guards.
+
+If it recurs:
+1. Open browser console (F12) — look for `TypeError: Cannot read properties of undefined`
+2. The error stack trace shows which component crashed
+3. Guard the offending call with `(value || '').method()` or `value?.method()`
+4. Rebuild: `docker compose build dashboard-agent && docker compose up -d dashboard-agent`
+5. Hard-refresh: `Ctrl+Shift+R`
+
+### Source code changes not showing in browser
+
+All dashboards run as **nginx containers with pre-built bundles**. Source edits require a Docker rebuild:
+
+```bash
+docker compose build dashboard-agent && docker compose up -d dashboard-agent
+# Then: Ctrl+Shift+R in browser
+```
+
+For development with hot-reload, run Vite locally instead:
+```bash
+cd dashboard-agent && npm install && npm run dev -- --port 5174
+```
 
 ### Database errors after code changes
 
@@ -272,3 +310,7 @@ sudo lsof -i :8001
 make clean
 docker compose up -d
 ```
+
+### Full troubleshooting guide
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for a comprehensive guide with all known issues and their solutions.

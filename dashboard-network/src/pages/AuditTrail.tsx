@@ -114,7 +114,7 @@ export default function AuditTrail() {
                 bg: 'bg-noc-surface/50',
                 text: 'text-noc-muted',
               };
-              const catLabel = categoryLabel[entry.category] || entry.category.toUpperCase();
+              const catLabel = categoryLabel[entry.category] || (entry.category || '').toUpperCase();
               const resStyle = resultBadge[entry.result] || 'bg-noc-surface/50 text-noc-muted';
 
               return (

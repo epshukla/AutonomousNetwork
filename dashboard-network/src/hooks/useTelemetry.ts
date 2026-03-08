@@ -8,6 +8,9 @@ import {
   getComplianceStatus,
   getSubscriberLogs,
   getSLAData,
+  getKillSwitchStatus,
+  killTarget,
+  restoreTarget,
   type OverviewResponse,
   type TopologyResponse,
   type DeviceData,
@@ -19,6 +22,10 @@ import {
   type ComplianceStatus,
   type SubscriberLogsResponse,
   type SLAData,
+  type KillSwitchStatus,
+  type KillTarget,
+  type KillResponse,
+  type RestoreResponse,
 } from '../api/simulator';
 
 const BASE_URL = import.meta.env.VITE_SIMULATOR_URL || 'http://localhost:8000';
@@ -371,4 +378,55 @@ export function useSLAData(pollInterval = 10000) {
   }, [pollInterval]);
 
   return { data, loading };
+}
+
+// ── Kill Switch Hook ────────────────────────────────────
+
+export function useKillSwitch(pollInterval = 2000) {
+  const [status, setStatus] = useState<KillSwitchStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const poll = async () => {
+      try {
+        const data = await getKillSwitchStatus();
+        if (mounted) {
+          setStatus(data);
+          setError(null);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch kill switch status');
+          setLoading(false);
+        }
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, pollInterval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [pollInterval]);
+
+  const kill = useCallback(async (target: KillTarget): Promise<KillResponse> => {
+    const result = await killTarget(target);
+    const updated = await getKillSwitchStatus();
+    setStatus(updated);
+    return result;
+  }, []);
+
+  const restore = useCallback(async (target: KillTarget): Promise<RestoreResponse> => {
+    const result = await restoreTarget(target);
+    const updated = await getKillSwitchStatus();
+    setStatus(updated);
+    return result;
+  }, []);
+
+  return { status, loading, error, kill, restore };
 }

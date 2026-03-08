@@ -23,6 +23,9 @@ export interface LinkEdgeData {
   bandwidth_gbps: number;
   label?: string;
   active_chaos?: ActiveChaosInfo[];
+  killed_manually?: boolean;
+  is_backup_active?: boolean;
+  backup_for?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -73,19 +76,25 @@ export default function LinkEdge({
     targetPosition,
   });
 
-  const color = statusColors[edgeData.status] || statusColors.healthy;
+  const isKilled = edgeData.killed_manually === true;
+  const isBackupActive = edgeData.is_backup_active === true;
+
+  const baseColor = statusColors[edgeData.status] || statusColors.healthy;
+  const color = isBackupActive ? '#00d4ff' : baseColor;
   const isDown = edgeData.status === 'down';
   const isDegraded = edgeData.status === 'degraded';
   const isCritical = edgeData.status === 'critical';
   const isAffected = isDown || isCritical;
-  const thickness = isDown ? 3 : Math.max(1.5, Math.min((edgeData.utilization || 0) / 15, 6));
+  const thickness = isKilled ? 4 : isBackupActive ? 3.5 : isDown ? 3 : Math.max(1.5, Math.min((edgeData.utilization || 0) / 15, 6));
 
   // Packet flow: count and speed vary by link health
   const packetCount = isDown ? 0
+    : isBackupActive ? 5
     : isCritical ? 1
     : isDegraded ? 2
     : Math.max(1, Math.min(4, Math.floor((edgeData.utilization || 0) / 25)));
-  const packetDuration = isCritical ? 8
+  const packetDuration = isBackupActive ? 1.2
+    : isCritical ? 8
     : isDegraded ? 4
     : Math.max(1, 3 - (edgeData.utilization || 0) / 50);
 
@@ -93,13 +102,13 @@ export default function LinkEdge({
 
   return (
     <>
-      {/* Glow effect - stronger for affected links */}
+      {/* Glow effect - stronger for affected/backup links */}
       <path
         d={edgePath}
         fill="none"
         stroke={color}
-        strokeWidth={isAffected ? thickness + 8 : thickness + 4}
-        strokeOpacity={isAffected ? 0.3 : 0.15}
+        strokeWidth={isBackupActive ? thickness + 10 : isAffected ? thickness + 8 : thickness + 4}
+        strokeOpacity={isBackupActive ? 0.35 : isAffected ? 0.3 : 0.15}
         className="react-flow__edge-path"
       />
 
@@ -110,8 +119,8 @@ export default function LinkEdge({
         fill="none"
         stroke={color}
         strokeWidth={thickness}
-        strokeOpacity={selected ? 1 : isDown ? 0.9 : 0.7}
-        strokeDasharray={isDown ? '8 6' : undefined}
+        strokeOpacity={selected ? 1 : isDown ? 0.9 : isBackupActive ? 0.9 : 0.7}
+        strokeDasharray={isKilled ? '12 8' : isDown ? '8 6' : undefined}
         className="react-flow__edge-path"
         markerEnd={markerEnd}
       />
@@ -157,7 +166,11 @@ export default function LinkEdge({
             className={`
               px-2 py-1 rounded-md text-[9px] font-mono font-medium
               backdrop-blur-sm border transition-all duration-200
-              ${isDown
+              ${isKilled
+                ? 'bg-red-950/95 border-red-400/60'
+                : isBackupActive
+                ? 'bg-cyan-950/90 border-cyan-400/50 shadow-[0_0_12px_rgba(0,212,255,0.3)]'
+                : isDown
                 ? 'bg-red-900/90 border-red-500/50'
                 : isCritical
                 ? 'bg-red-900/80 border-red-500/40'
@@ -170,7 +183,21 @@ export default function LinkEdge({
             `}
             style={{ color }}
           >
-            {isDown ? (
+            {isKilled ? (
+              <div className="flex items-center gap-1">
+                <Skull className="w-3 h-3 text-red-400" />
+                <span className="text-red-400 font-bold">KILLED</span>
+              </div>
+            ) : isBackupActive ? (
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-[8px] font-bold text-cyan-300 uppercase tracking-wider">Backup Active</span>
+                <div className="flex items-center gap-2">
+                  <span>{(edgeData.utilization || 0).toFixed(0)}%</span>
+                  <span className="text-noc-muted">|</span>
+                  <span>{(edgeData.throughput_gbps || 0).toFixed(1)}G</span>
+                </div>
+              </div>
+            ) : isDown ? (
               <div className="flex items-center gap-1">
                 <span className="text-red-400 font-bold">LINK DOWN</span>
               </div>

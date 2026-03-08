@@ -33,7 +33,7 @@
 
 ## What This Does
 
-This system simulates a **realistic ISP backbone network** (Delhi ↔ Mumbai, 10 devices, 14 links, 2.7M customers) and runs an **autonomous AI agent** that:
+This system simulates a **realistic ISP backbone network** (Delhi ↔ Mumbai, 16 devices, 24 links, 2.7M customers) and runs an **autonomous AI agent** that:
 
 1. **Observes** network telemetry every 30 seconds (CPU, memory, latency, packet loss, BGP state)
 2. **Detects** anomalies using statistical thresholds (no AI needed)
@@ -42,7 +42,11 @@ This system simulates a **realistic ISP backbone network** (Delhi ↔ Mumbai, 10
 5. **Recommends actions** classified by autonomy tier (auto-execute vs. human approval)
 6. **Learns** from outcomes — adjusting detection thresholds over time
 
-Meanwhile, **chaos engineering scenarios** (fiber cuts, DDoS, device failures, BGP leaks) can be launched to test the agent's response.
+Additionally, the system includes:
+- **Kill Switch Panel** — Manually kill any device or link from the topology map, independent of chaos scenarios. Killed links trigger automatic backup path rerouting with live visual indicators (cyan glow for backup links, dashed red for killed links).
+- **Routing Efficiency Monitor** — Real-time SVG gauge showing network routing health: healthy/rerouted/broken path counts.
+- **Indian ISP Cost Ticker** — Real-time outage cost calculator using TRAI/industry figures (₹183 ARPU, ₹45K enterprise, SLA penalties). Displays in Indian number format (₹ lakhs/crores) with smooth requestAnimationFrame-based ticking.
+- **Chaos Engineering** — 8 scenarios (fiber cuts, DDoS, device failures, BGP leaks, etc.) to test the agent's response.
 
 ## Quick Start
 
@@ -144,7 +148,12 @@ AutonomousNetwork/
 ├── dashboard-network/          # Dashboard 1: Network Visualization (port 5173)
 │   └── src/
 │       ├── components/         # TopologyMap (React Flow), Charts (Recharts)
-│       ├── pages/              # Overview, Topology, Telemetry, Events
+│       │   └── topology/       # DeviceNode, LinkEdge, KillSwitchPanel,
+│       │                       # RoutingEfficiency, CostTicker
+│       ├── pages/              # Overview, Topology, Devices, Interfaces,
+│       │                       # Routing, Traffic, Alerts, Metrics,
+│       │                       # Compliance, SubscriberLogs, AuditTrail
+│       ├── utils/              # formatINR (Indian number formatting)
 │       └── api/                # Simulator API client
 │
 ├── dashboard-agent/            # Dashboard 2: Agent Intelligence (port 5174)
@@ -192,6 +201,10 @@ See [docs/API.md](docs/API.md) for the complete API reference.
 | `POST` | `/api/v1/chaos/scenarios/{name}/stop` | Stop a chaos scenario |
 | `GET` | `/api/v1/chaos/active` | List active scenarios |
 | `GET` | `/api/v1/chaos/history` | Chaos run history |
+| `POST` | `/api/v1/killswitch/kill` | Kill a device or link manually |
+| `POST` | `/api/v1/killswitch/restore` | Restore a killed device or link |
+| `GET` | `/api/v1/killswitch/status` | Kill switch status, routing efficiency, cost impact |
+| `GET` | `/api/v1/compliance/status` | DOT/TRAI compliance status + NTP sync |
 | `WS` | `/ws/events` | Real-time network events |
 
 ### Agent API (`:8001`)
@@ -291,8 +304,9 @@ Delhi                                              Mumbai
               │    100 Gbps Backup Backbone         │
               └────────────────────────────────────┘
 
-10 devices  •  14 links  •  2 BGP peering sessions
+16 devices  •  24 links  •  2 BGP peering sessions
 Delhi: 1.2M customers  •  Mumbai: 1.5M customers
+4 OLTs  •  2 Aggregation Routers  •  10 backup-capable link pairs
 ```
 
 ## Tech Stack
@@ -320,6 +334,15 @@ Delhi: 1.2M customers  •  Mumbai: 1.5M customers
 | `OBSERVE_INTERVAL_SECONDS` | `30` | Agent loop interval |
 | `TELEMETRY_INTERVAL_SECONDS` | `5` | Simulator telemetry tick |
 | `LOG_LEVEL` | `INFO` | Log verbosity |
+
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for a comprehensive troubleshooting guide and history of known issues with solutions.
+
+Common issues:
+- **AI Diagnose fails / 500 error**: Invalid or expired `CLAUDE_API_KEY` in `.env`. Get a new key from [console.anthropic.com](https://console.anthropic.com/settings/keys), update `.env`, then `docker compose up -d agent`.
+- **Dashboard blank page**: Unguarded string method calls on undefined API data. Fixed with ErrorBoundary reset-on-route-change and defensive guards.
+- **CORS errors on agent API**: Side-effect of backend 500 errors (missing CORS headers on error responses). Fix the underlying 500 error first.
 
 ## License
 

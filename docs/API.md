@@ -316,6 +316,139 @@ Get history of past chaos runs.
 
 ---
 
+### Kill Switch
+
+Manual device/link kill and restore, independent of the chaos engine.
+
+#### `POST /api/v1/killswitch/kill`
+
+Kill a device or link manually. Triggers backup path rerouting where available.
+
+**Request Body:**
+```json
+{
+  "target_type": "device",
+  "target_id": "core-delhi-1"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "target": { "target_type": "device", "target_id": "core-delhi-1" },
+  "affected_links": ["link-del-mum-primary", "link-del-intra", "link-del-c1-en", "link-del-c1-es", "link-del-peer", "link-del-c1-agg"],
+  "backup_paths": [
+    {
+      "original_link": "link-del-mum-primary",
+      "backup_link": "link-del-mum-backup",
+      "description": "Backup backbone via core-delhi-2 ↔ core-mumbai-2",
+      "status": "active",
+      "hop_increase": 1,
+      "latency_increase_ms": 3.5
+    }
+  ],
+  "routing_analysis": {
+    "efficiency_percent": 75.0,
+    "total_paths": 24,
+    "healthy_paths": 18,
+    "rerouted_paths": 3,
+    "broken_paths": 3,
+    "avg_latency_increase_ms": 4.2
+  }
+}
+```
+
+#### `POST /api/v1/killswitch/restore`
+
+Restore a killed device or link. Respects active chaos — won't restore links still affected by chaos scenarios.
+
+**Request Body:**
+```json
+{
+  "target_type": "device",
+  "target_id": "core-delhi-1"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "target": { "target_type": "device", "target_id": "core-delhi-1" },
+  "restored_links": ["link-del-mum-primary", "link-del-intra", "link-del-c1-en"]
+}
+```
+
+#### `GET /api/v1/killswitch/status`
+
+Returns current kill switch state including routing efficiency and outage cost.
+
+**Response:**
+```json
+{
+  "killed_devices": ["core-delhi-1"],
+  "killed_links": ["link-del-mum-primary"],
+  "kill_details": {
+    "core-delhi-1": { "killed_at": "2026-03-08T15:00:00Z", "affected_links": ["link-del-mum-primary"] }
+  },
+  "routing_efficiency": {
+    "efficiency_percent": 75.0,
+    "total_paths": 24,
+    "healthy_paths": 18,
+    "rerouted_paths": 3,
+    "broken_paths": 3,
+    "avg_latency_increase_ms": 4.2
+  },
+  "cost_impact": {
+    "total_cost": 125430.50,
+    "revenue_loss": 98000.00,
+    "sla_penalty": 0,
+    "operational_cost": 27430.50,
+    "affected_subscribers": 450000,
+    "cost_per_second": 12.85,
+    "duration_seconds": 300
+  },
+  "backup_paths": [
+    {
+      "original_link": "link-del-mum-primary",
+      "backup_link": "link-del-mum-backup",
+      "description": "Backup backbone",
+      "status": "active",
+      "hop_increase": 1,
+      "latency_increase_ms": 3.5
+    }
+  ]
+}
+```
+
+**Cost Model** (Indian ISP, TRAI figures):
+- Subscriber ARPU: ₹183/month
+- Enterprise ARPU: ₹45,000/month
+- SLA penalty: ₹50,000/hour (kicks in after 1 hour)
+- NOC staff: ₹2,500/hour per killed device
+- Power: ₹150/hour per affected device
+
+---
+
+### Compliance
+
+#### `GET /api/v1/compliance/status`
+
+Returns DOT/TRAI compliance status.
+
+**Response:**
+```json
+{
+  "ntp_synced": true,
+  "compliance_score": 95.5,
+  "sla_status": { ... },
+  "dot_compliance": { ... }
+}
+```
+
+---
+
 ### WebSocket
 
 #### `WS /ws/events`

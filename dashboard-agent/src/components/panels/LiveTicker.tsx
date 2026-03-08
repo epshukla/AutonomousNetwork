@@ -56,7 +56,7 @@ export default function LiveTicker() {
             const description =
               (event.data as any)?.description ||
               (event.data as any)?.title ||
-              event.type.replace(/_/g, ' ');
+              (event.type || '').replace(/_/g, ' ');
             return (
               <span
                 key={`${event.id}-${i}`}

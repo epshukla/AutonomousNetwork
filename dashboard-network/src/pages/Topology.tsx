@@ -22,6 +22,7 @@ import {
   Clock,
   AlertTriangle,
   Gauge,
+  Skull,
 } from 'lucide-react';
 
 import DeviceNodeComponent, {
@@ -30,9 +31,12 @@ import DeviceNodeComponent, {
 import LinkEdge, { type LinkEdgeData } from '../components/topology/LinkEdge';
 import ZoneNode from '../components/topology/ZoneNode';
 import AnnotationNode from '../components/topology/AnnotationNode';
+import KillSwitchPanel from '../components/topology/KillSwitchPanel';
+import RoutingEfficiency from '../components/topology/RoutingEfficiency';
+import CostTicker from '../components/topology/CostTicker';
 import HealthBadge from '../components/common/HealthBadge';
 import StatusDot from '../components/common/StatusDot';
-import { useTopology, useWSTelemetry } from '../hooks/useTelemetry';
+import { useTopology, useWSTelemetry, useKillSwitch } from '../hooks/useTelemetry';
 import type { DeviceData, LinkData } from '../api/simulator';
 
 const nodeTypes = {
@@ -45,24 +49,24 @@ const edgeTypes = { link: LinkEdge };
 // ── Hierarchical positions: peering (top) → core (middle) → edge (bottom) ──
 
 const DEVICE_POSITIONS: Record<string, { x: number; y: number }> = {
-  // ── Delhi — left side ──
-  'peer-delhi-1':          { x: 180, y: 40 },
-  'core-delhi-1':          { x: 80,  y: 200 },
-  'core-delhi-2':          { x: 280, y: 200 },
-  'agg-delhi-1':           { x: 180, y: 360 },
-  'edge-delhi-north':      { x: 80,  y: 520 },
-  'edge-delhi-south':      { x: 280, y: 520 },
-  'olt-delhi-north-1':     { x: 80,  y: 680 },
-  'olt-delhi-south-1':     { x: 280, y: 680 },
-  // ── Mumbai — right side ──
-  'peer-mumbai-1':         { x: 680, y: 40 },
-  'core-mumbai-1':         { x: 580, y: 200 },
-  'core-mumbai-2':         { x: 780, y: 200 },
-  'agg-mumbai-1':          { x: 680, y: 360 },
-  'edge-mumbai-central':   { x: 580, y: 520 },
-  'edge-mumbai-harbor':    { x: 780, y: 520 },
-  'olt-mumbai-central-1':  { x: 580, y: 680 },
-  'olt-mumbai-harbor-1':   { x: 780, y: 680 },
+  // ── Delhi — left side (wider spacing for edge visibility) ──
+  'peer-delhi-1':          { x: 220, y: 50 },
+  'core-delhi-1':          { x: 60,  y: 270 },
+  'core-delhi-2':          { x: 380, y: 270 },
+  'agg-delhi-1':           { x: 220, y: 490 },
+  'edge-delhi-north':      { x: 60,  y: 710 },
+  'edge-delhi-south':      { x: 380, y: 710 },
+  'olt-delhi-north-1':     { x: 60,  y: 930 },
+  'olt-delhi-south-1':     { x: 380, y: 930 },
+  // ── Mumbai — right side (offset 660px from Delhi) ──
+  'peer-mumbai-1':         { x: 880, y: 50 },
+  'core-mumbai-1':         { x: 720, y: 270 },
+  'core-mumbai-2':         { x: 1040, y: 270 },
+  'agg-mumbai-1':          { x: 880, y: 490 },
+  'edge-mumbai-central':   { x: 720, y: 710 },
+  'edge-mumbai-harbor':    { x: 1040, y: 710 },
+  'olt-mumbai-central-1':  { x: 720, y: 930 },
+  'olt-mumbai-harbor-1':   { x: 1040, y: 930 },
 };
 
 const FRIENDLY_NAMES: Record<string, string> = {
@@ -90,8 +94,8 @@ const ZONE_NODES: Node[] = [
   {
     id: 'zone-delhi',
     type: 'zone',
-    position: { x: -10, y: 0 },
-    data: { label: 'Delhi  •  1.2M Customers', width: 420, height: 780 },
+    position: { x: -30, y: 0 },
+    data: { label: 'Delhi  •  1.2M Customers', width: 640, height: 1050 },
     zIndex: -1,
     selectable: false,
     draggable: false,
@@ -99,8 +103,8 @@ const ZONE_NODES: Node[] = [
   {
     id: 'zone-mumbai',
     type: 'zone',
-    position: { x: 490, y: 0 },
-    data: { label: 'Mumbai  •  1.5M Customers', width: 420, height: 780 },
+    position: { x: 630, y: 0 },
+    data: { label: 'Mumbai  •  1.5M Customers', width: 640, height: 1050 },
     zIndex: -1,
     selectable: false,
     draggable: false,
@@ -111,7 +115,7 @@ const ANNOTATION_NODES: Node[] = [
   {
     id: 'tier-peering',
     type: 'annotation',
-    position: { x: -150, y: 55 },
+    position: { x: -180, y: 65 },
     data: { label: 'PEERING', sublabel: 'Internet Exchange' },
     selectable: false,
     draggable: false,
@@ -119,7 +123,7 @@ const ANNOTATION_NODES: Node[] = [
   {
     id: 'tier-core',
     type: 'annotation',
-    position: { x: -150, y: 215 },
+    position: { x: -180, y: 285 },
     data: { label: 'CORE', sublabel: 'Backbone' },
     selectable: false,
     draggable: false,
@@ -127,7 +131,7 @@ const ANNOTATION_NODES: Node[] = [
   {
     id: 'tier-agg',
     type: 'annotation',
-    position: { x: -150, y: 375 },
+    position: { x: -180, y: 505 },
     data: { label: 'AGGREGATION', sublabel: 'Distribution' },
     selectable: false,
     draggable: false,
@@ -135,7 +139,7 @@ const ANNOTATION_NODES: Node[] = [
   {
     id: 'tier-edge',
     type: 'annotation',
-    position: { x: -150, y: 535 },
+    position: { x: -180, y: 725 },
     data: { label: 'EDGE', sublabel: 'Customer-Facing' },
     selectable: false,
     draggable: false,
@@ -143,7 +147,7 @@ const ANNOTATION_NODES: Node[] = [
   {
     id: 'tier-olt',
     type: 'annotation',
-    position: { x: -150, y: 695 },
+    position: { x: -180, y: 945 },
     data: { label: 'OLT / ACCESS', sublabel: 'Fiber to Home' },
     selectable: false,
     draggable: false,
@@ -394,6 +398,31 @@ export default function Topology() {
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [killPanelOpen, setKillPanelOpen] = useState(false);
+  const { status: killStatus, kill, restore } = useKillSwitch(2000);
+
+  const killedDevicesSet = useMemo(() => new Set(killStatus?.killed_devices || []), [killStatus]);
+  const killedLinksSet = useMemo(() => {
+    const s = new Set(killStatus?.killed_links || []);
+    // Also add links affected by killed devices
+    if (killStatus?.kill_details) {
+      for (const info of Object.values(killStatus.kill_details)) {
+        for (const lid of (info.affected_links || [])) {
+          s.add(lid);
+        }
+      }
+    }
+    return s;
+  }, [killStatus]);
+  const backupActiveSet = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const bp of (killStatus?.backup_paths || [])) {
+      if (bp.status === 'active') {
+        m.set(bp.backup_link, bp.original_link);
+      }
+    }
+    return m;
+  }, [killStatus]);
 
   // Merge live telemetry into topology data
   const mergedDevices = useMemo(() => {
@@ -431,8 +460,32 @@ export default function Topology() {
     });
   }, [links, latestTelemetry]);
 
-  const deviceNodes = useMemo(() => layoutDevices(mergedDevices), [mergedDevices]);
-  const edges = useMemo(() => layoutEdges(mergedLinks), [mergedLinks]);
+  const deviceNodes = useMemo(() => {
+    const nodes = layoutDevices(mergedDevices);
+    // Inject killed_manually flag
+    for (const node of nodes) {
+      if (killedDevicesSet.has(node.id)) {
+        node.data.killed_manually = true;
+      }
+    }
+    return nodes;
+  }, [mergedDevices, killedDevicesSet]);
+
+  const edges = useMemo(() => {
+    const edgeList = layoutEdges(mergedLinks);
+    // Inject killed_manually and is_backup_active flags
+    for (const edge of edgeList) {
+      if (killedLinksSet.has(edge.id) && edge.data) {
+        edge.data.killed_manually = true;
+      }
+      const backupFor = backupActiveSet.get(edge.id);
+      if (backupFor && edge.data) {
+        edge.data.is_backup_active = true;
+        edge.data.backup_for = backupFor;
+      }
+    }
+    return edgeList;
+  }, [mergedLinks, killedLinksSet, backupActiveSet]);
 
   // Combine all nodes: zones (background) + annotations + devices
   const nodes = useMemo(
@@ -495,6 +548,22 @@ export default function Topology() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Kill Switch Toggle */}
+            <button
+              onClick={() => setKillPanelOpen(!killPanelOpen)}
+              className={`glass-card px-4 py-2 flex items-center gap-2 cursor-pointer transition-colors ${
+                killPanelOpen ? 'border-noc-red/50 text-noc-red' : 'text-noc-muted hover:border-noc-red/30 hover:text-noc-red/80'
+              }`}
+            >
+              <Skull className="w-4 h-4" />
+              <span className="text-xs font-medium">Kill Switch</span>
+              {killStatus && (killStatus.killed_devices.length + killStatus.killed_links.length) > 0 && (
+                <span className="bg-noc-red text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  {killStatus.killed_devices.length + killStatus.killed_links.length}
+                </span>
+              )}
+            </button>
+
             {/* Legend */}
             <div className="glass-card px-4 py-2 flex items-center gap-4">
               {[
@@ -572,6 +641,41 @@ export default function Topology() {
           style={{ backgroundColor: '#111638' }}
         />
       </ReactFlow>
+
+      {/* Kill Switch Panel — left side */}
+      <AnimatePresence>
+        {killPanelOpen && (
+          <KillSwitchPanel
+            isOpen={killPanelOpen}
+            onClose={() => setKillPanelOpen(false)}
+            devices={mergedDevices}
+            links={mergedLinks}
+            killStatus={killStatus}
+            onKill={kill}
+            onRestore={restore}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Routing Efficiency — floating overlay */}
+      <AnimatePresence>
+        {killStatus && (killStatus.killed_devices.length + killStatus.killed_links.length) > 0 && (
+          <RoutingEfficiency
+            analysis={killStatus.routing_efficiency}
+            backupPaths={killStatus.backup_paths}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Cost Ticker — bottom right */}
+      <AnimatePresence>
+        {killStatus && (killStatus.killed_devices.length + killStatus.killed_links.length) > 0 && (
+          <CostTicker
+            costImpact={killStatus.cost_impact}
+            isActive={true}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Detail Panel */}
       <AnimatePresence>

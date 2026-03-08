@@ -4,6 +4,7 @@ import { AlertTriangle, RotateCw } from 'lucide-react';
 interface Props {
   children: ReactNode;
   fallbackMessage?: string;
+  resetKey?: string;
 }
 
 interface State {
@@ -19,6 +20,12 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -42,14 +49,11 @@ export default class ErrorBoundary extends Component<Props, State> {
             {this.state.error?.stack?.split('\n').slice(0, 3).join('\n')}
           </pre>
           <button
-            onClick={() => {
-              this.setState({ hasError: false, error: null });
-              window.location.reload();
-            }}
+            onClick={() => this.setState({ hasError: false, error: null })}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-noc-cyan/10 text-noc-cyan border border-noc-cyan/30 hover:bg-noc-cyan/20 transition-colors text-sm font-medium"
           >
             <RotateCw className="w-4 h-4" />
-            Reload Page
+            Try Again
           </button>
         </div>
       );

@@ -266,7 +266,17 @@
       "Bash(docker compose logs dashboard-network 2>&1 | tail -20)",
       "Bash(cd /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-network && npm install 2>&1 | tail -5 && npx vite build 2>&1 | tail -20NEW INCIDENT — AWAITING AI ANALYSIS)",
       "Bash(npx vite build 2>&1 | tail -10)",
-      "Bash(docker compose build dashboard-network 2>&1 | tail -10 && docker compose up -d dashboard-network 2>&1)"
+      "Bash(docker compose build dashboard-network 2>&1 | tail -10 && docker compose up -d dashboard-network 2>&1)",
+      "Bash(grep -r \"pulse\" /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-network/src --include=\"*.css\" --include=\"*.js\" --include=\"*.ts\" 2>/dev/null | head -30)",
+      "Bash(cd /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork && python3 -c \"import ast; ast.parse\\(open\\('simulator/src/netsim/api/cost_calculator.py'\\).read\\(\\)\\); print\\('cost_calculator.py OK'\\)\" && python3 -c \"import ast; ast.parse\\(open\\('simulator/src/netsim/api/killswitch.py'\\).read\\(\\)\\); print\\('killswitch.py OK'\\)\" && python3 -c \"import ast; ast.parse\\(open\\('simulator/src/netsim/app.py'\\).read\\(\\)\\); print\\('app.py OK'\\)\")",
+      "Bash(cd /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-network && npx tsc --noEmit 2>&1 | head -60)",
+      "Bash(cd /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork && python3 -c \"\nimport ast\nfiles = [\n    'simulator/src/netsim/api/cost_calculator.py',\n    'simulator/src/netsim/api/killswitch.py',\n    'simulator/src/netsim/app.py',\n]\nfor f in files:\n    ast.parse\\(open\\(f\\).read\\(\\)\\)\n    print\\(f'{f}: OK'\\)\n\")",
+      "Bash(cd /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-network && npx vite build 2>&1 | tail -15)",
+      "Bash(npx tsc --noEmit 2>&1 && echo \"OK\")",
+      "Bash(npx vite build 2>&1 | tail -5)",
+      "Bash(docker ps --format '{{.Names}} {{.Ports}}' 2>/dev/null | grep -i agent)",
+      "Bash(cd /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork && docker compose build dashboard-agent --no-cache 2>&1 | tail -5)",
+      "Bash(docker compose build agent --no-cache 2>&1 | tail -5)"
     ]
   }
 }

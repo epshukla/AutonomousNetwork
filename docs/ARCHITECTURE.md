@@ -592,6 +592,56 @@ All three dashboards share the same tech stack and design system:
 | **Impact View** | Real-time metric impact during active chaos, agent response timeline |
 | **History** | Past chaos runs with timestamps and outcomes |
 
+## Kill Switch & Cost Model
+
+### Kill Switch Architecture
+
+The kill switch is independent of the chaos engine — it allows operators to manually kill devices or links and observe the network's response.
+
+**Backend**: `simulator/src/netsim/api/killswitch.py`
+- Module-level `_kill_state` dict (same pattern as chaos engine)
+- 3 endpoints: POST /kill, POST /restore, GET /status
+- Kill sets `device.status = DOWN` + `forced_down = True` on connected links
+- Restore calls `restart_device()` but respects active chaos (won't restore chaos-affected links)
+- `BACKUP_PATHS` hardcoded map of 10 redundant link pairs from topology
+
+**Backup Path Rerouting**:
+When a link is killed, if it has a backup path, the backup link's utilization increases by +25% and is marked as active. The topology visualization shows killed links with dashed red strokes and backup links with cyan glow.
+
+**Routing Analysis** (`_analyze_routing()`):
+- Counts 24 total links
+- For each down link: checks `BACKUP_PATHS` for backup → "rerouted" if backup is up, "broken" if not
+- `efficiency = healthy / total * 100`
+
+### Indian ISP Cost Calculator
+
+**Backend**: `simulator/src/netsim/api/cost_calculator.py`
+
+Uses TRAI/industry figures to calculate real-time outage costs:
+
+```
+COST_MODEL = {
+    subscriber_arpu_monthly:  ₹183      (TRAI residential data)
+    enterprise_arpu_monthly:  ₹45,000   (enterprise segment)
+    sla_penalty_per_hour:     ₹50,000   (SLA breach penalty, kicks in after 1 hour)
+    noc_staff_per_hour:       ₹2,500    (NOC engineer cost)
+    power_per_device_hour:    ₹150      (per affected device)
+}
+```
+
+**Subscriber Impact Calculation**:
+- OLT kills: directly count subscribers on that OLT
+- Core/aggregation/edge kills: trace downstream to find cut-off OLTs
+- Uses `customer_distribution` from topology for enterprise/residential split
+
+**Frontend**: `dashboard-network/src/components/topology/CostTicker.tsx`
+- `requestAnimationFrame` loop interpolates between 2-second poll updates
+- `displayedCost = serverCost + cost_per_second * elapsed`
+- Indian number format via `formatINR()`: ₹1,23,456.78 (groups of 2 after last 3)
+- Compact format: ₹1.23 Cr / ₹4.56 L
+
+---
+
 ## Security Considerations
 
 - Claude API key is passed via environment variable, never hardcoded

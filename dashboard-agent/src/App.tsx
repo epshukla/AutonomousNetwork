@@ -221,11 +221,13 @@ export default function App() {
         </header>
 
         {/* Live Event Ticker */}
-        <LiveTicker />
+        <ErrorBoundary resetKey={location.pathname}>
+          <LiveTicker />
+        </ErrorBoundary>
 
         {/* Page Content */}
         <div className="p-4 flex-1">
-          <ErrorBoundary>
+          <ErrorBoundary resetKey={location.pathname}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}

@@ -24,6 +24,7 @@ export interface DeviceNodeData {
   vendor?: string | null;
   model?: string | null;
   active_chaos?: ActiveChaosInfo[];
+  killed_manually?: boolean;
 }
 
 const CHAOS_VISUALS: Record<string, { icon: React.ElementType; color: string; label: string }> = {
@@ -90,7 +91,10 @@ function ProgressBar({
 
 function DeviceNodeComponent({ data, selected }: NodeProps<DeviceNodeData>) {
   const Icon = deviceIcons[data.type] || Server;
-  const border = statusBorder[data.status] || statusBorder.down;
+  const baseBorder = statusBorder[data.status] || statusBorder.down;
+  const border = data.killed_manually
+    ? 'border-red-500/70 border-dashed shadow-[0_0_25px_rgba(255,0,0,0.4)]'
+    : baseBorder;
   const isAffected = data.status === 'critical' || data.status === 'down';
   const isDegraded = data.status === 'degraded';
 
@@ -139,12 +143,24 @@ function DeviceNodeComponent({ data, selected }: NodeProps<DeviceNodeData>) {
           }}
         />
 
-        {/* DOWN overlay */}
+        {/* DOWN / KILLED overlay */}
         {data.status === 'down' && (
-          <div className="absolute inset-0 rounded-xl bg-red-900/20 flex items-center justify-center z-10 pointer-events-none">
-            <div className="bg-red-900/90 px-3 py-1 rounded-md border border-red-500/50 flex items-center gap-1.5">
-              <XCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-300 text-xs font-bold uppercase tracking-wider">DOWN</span>
+          <div className={`absolute inset-0 rounded-xl flex items-center justify-center z-10 pointer-events-none ${
+            data.killed_manually ? 'bg-black/40' : 'bg-red-900/20'
+          }`}>
+            <div className={`px-3 py-1 rounded-md border flex items-center gap-1.5 ${
+              data.killed_manually
+                ? 'bg-red-950/95 border-red-400/60'
+                : 'bg-red-900/90 border-red-500/50'
+            }`}>
+              {data.killed_manually ? (
+                <Skull className="w-4 h-4 text-red-400" />
+              ) : (
+                <XCircle className="w-4 h-4 text-red-400" />
+              )}
+              <span className="text-red-300 text-xs font-bold uppercase tracking-wider">
+                {data.killed_manually ? 'KILLED' : 'DOWN'}
+              </span>
             </div>
           </div>
         )}
@@ -179,7 +195,7 @@ function DeviceNodeComponent({ data, selected }: NodeProps<DeviceNodeData>) {
               <StatusDot status={data.status} size="sm" />
             </div>
             <span className="text-[9px] text-noc-muted capitalize font-medium">
-              {data.type.replace(/_/g, ' ')} - {data.location}
+              {(data.type || '').replace(/_/g, ' ')} - {data.location}
             </span>
             {data.vendor && data.model && (
               <span className="text-[8px] text-noc-muted/60 font-mono block">
