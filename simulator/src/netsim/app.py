@@ -112,6 +112,7 @@ def create_app() -> FastAPI:
     from netsim.api.chaos import router as chaos_router
     from netsim.api.websocket import router as ws_router
     from netsim.api.interfaces import router as interfaces_router
+    from netsim.api.compliance import router as compliance_router
     from netsim.metrics import router as metrics_router
 
     app.include_router(topology_router)
@@ -120,6 +121,7 @@ def create_app() -> FastAPI:
     app.include_router(chaos_router)
     app.include_router(ws_router)
     app.include_router(interfaces_router)
+    app.include_router(compliance_router)
     app.include_router(metrics_router)
 
     @app.get("/health")

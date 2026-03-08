@@ -32,6 +32,33 @@ const navItems = [
   { path: '/audit', icon: ScrollText, label: 'Audit Log' },
 ];
 
+function NtpBadge() {
+  const [synced, setSynced] = useState(true);
+
+  useEffect(() => {
+    const BASE = import.meta.env.VITE_SIMULATOR_URL || 'http://localhost:8000';
+    const poll = async () => {
+      try {
+        const res = await fetch(`${BASE}/api/v1/compliance/status`);
+        if (res.ok) {
+          const data = await res.json();
+          setSynced(data.ntp_synced ?? true);
+        }
+      } catch { /* ignore */ }
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`w-1.5 h-1.5 rounded-full ${synced ? 'bg-noc-green' : 'bg-noc-red animate-pulse'}`} />
+      <span className="text-[10px] text-noc-muted">{synced ? 'NTP Synced' : 'NTP Desync'}</span>
+    </div>
+  );
+}
+
 function LiveClock() {
   const [now, setNow] = useState(new Date());
 
@@ -187,6 +214,7 @@ export default function App() {
                 <Radio className="w-3.5 h-3.5 text-noc-green animate-pulse" />
                 <span className="text-xs text-noc-muted">Live</span>
               </div>
+              <NtpBadge />
               <LiveClock />
             </div>
           </div>

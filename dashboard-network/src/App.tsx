@@ -1,4 +1,5 @@
 import React from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -12,6 +13,9 @@ import {
   Activity,
   Radio,
   Zap,
+  Shield,
+  Users,
+  ScrollText,
 } from 'lucide-react';
 
 import Overview from './pages/Overview';
@@ -22,8 +26,11 @@ import Routing from './pages/Routing';
 import Traffic from './pages/Traffic';
 import Alerts from './pages/Alerts';
 import Metrics from './pages/Metrics';
+import Compliance from './pages/Compliance';
+import SubscriberLogs from './pages/SubscriberLogs';
+import AuditTrail from './pages/AuditTrail';
 
-const navItems = [
+const operationalNav = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
   { path: '/topology', label: 'Topology', icon: Network },
   { path: '/devices', label: 'Devices', icon: Server },
@@ -33,6 +40,41 @@ const navItems = [
   { path: '/alerts', label: 'Alerts', icon: Bell },
   { path: '/metrics', label: 'Metrics', icon: Activity },
 ];
+
+const complianceNav = [
+  { path: '/compliance', label: 'Compliance', icon: Shield },
+  { path: '/subscribers', label: 'Subscribers', icon: Users },
+  { path: '/audit', label: 'Audit Trail', icon: ScrollText },
+];
+
+const navItems = [...operationalNav, ...complianceNav];
+
+function NtpBadge() {
+  const [synced, setSynced] = useState(true);
+
+  useEffect(() => {
+    const BASE_URL = import.meta.env.VITE_SIMULATOR_URL || 'http://localhost:8000';
+    const poll = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/v1/compliance/status`);
+        if (res.ok) {
+          const data = await res.json();
+          setSynced(data.ntp_synced ?? true);
+        }
+      } catch { /* ignore */ }
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-1.5 mt-2">
+      <span className={`w-1.5 h-1.5 rounded-full ${synced ? 'bg-noc-green' : 'bg-noc-red animate-pulse'}`} />
+      <span className="text-[10px] text-noc-muted">{synced ? 'NTP Synced' : 'NTP Desync'}</span>
+    </div>
+  );
+}
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -67,11 +109,29 @@ export default function App() {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => (
+          {operationalNav.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               end={item.path === '/'}
+              className={({ isActive }) =>
+                isActive ? 'sidebar-link-active' : 'sidebar-link'
+              }
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="text-sm font-medium">{item.label}</span>
+            </NavLink>
+          ))}
+
+          <div className="my-2 border-t border-noc-border/30" />
+          <div className="px-3 mb-1">
+            <span className="text-[9px] font-bold text-noc-muted/60 uppercase tracking-widest">Regulatory</span>
+          </div>
+
+          {complianceNav.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
               className={({ isActive }) =>
                 isActive ? 'sidebar-link-active' : 'sidebar-link'
               }
@@ -93,6 +153,7 @@ export default function App() {
               <div className="w-2 h-2 rounded-full bg-noc-green animate-pulse-glow" />
               <span className="text-xs text-noc-muted">Simulator Connected</span>
             </div>
+            <NtpBadge />
           </div>
         </div>
       </aside>
@@ -117,6 +178,9 @@ export default function App() {
               <Route path="/traffic" element={<Traffic />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/metrics" element={<Metrics />} />
+              <Route path="/compliance" element={<Compliance />} />
+              <Route path="/subscribers" element={<SubscriberLogs />} />
+              <Route path="/audit" element={<AuditTrail />} />
             </Routes>
           </motion.div>
         </AnimatePresence>

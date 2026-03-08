@@ -5,6 +5,9 @@ import {
   getTopology,
   getInterfaces,
   getTrafficAnalytics,
+  getComplianceStatus,
+  getSubscriberLogs,
+  getSLAData,
   type OverviewResponse,
   type TopologyResponse,
   type DeviceData,
@@ -13,6 +16,9 @@ import {
   type NetworkEvent,
   type InterfacesResponse,
   type TrafficAnalytics,
+  type ComplianceStatus,
+  type SubscriberLogsResponse,
+  type SLAData,
 } from '../api/simulator';
 
 const BASE_URL = import.meta.env.VITE_SIMULATOR_URL || 'http://localhost:8000';
@@ -263,4 +269,106 @@ export function useEvents(maxEvents = 200): UseEventsReturn {
   });
 
   return { events, isConnected };
+}
+
+// ── Compliance Status Hook ──────────────────────────────
+
+export function useComplianceStatus(pollInterval = 10000) {
+  const [data, setData] = useState<ComplianceStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const poll = async () => {
+      try {
+        const result = await getComplianceStatus();
+        if (mounted) {
+          setData(result);
+          setLoading(false);
+        }
+      } catch {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, pollInterval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [pollInterval]);
+
+  return { data, loading };
+}
+
+// ── Subscriber Logs Hook ────────────────────────────────
+
+export function useSubscriberLogs(
+  limit = 50,
+  offset = 0,
+  subscriberId?: string,
+  pollInterval = 15000
+) {
+  const [data, setData] = useState<SubscriberLogsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const poll = async () => {
+      try {
+        const result = await getSubscriberLogs(limit, offset, subscriberId);
+        if (mounted) {
+          setData(result);
+          setLoading(false);
+        }
+      } catch {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    setLoading(true);
+    poll();
+    const interval = setInterval(poll, pollInterval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [limit, offset, subscriberId, pollInterval]);
+
+  return { data, loading };
+}
+
+// ── SLA Data Hook ───────────────────────────────────────
+
+export function useSLAData(pollInterval = 10000) {
+  const [data, setData] = useState<SLAData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const poll = async () => {
+      try {
+        const result = await getSLAData();
+        if (mounted) {
+          setData(result);
+          setLoading(false);
+        }
+      } catch {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, pollInterval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [pollInterval]);
+
+  return { data, loading };
 }

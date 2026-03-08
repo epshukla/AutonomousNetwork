@@ -249,6 +249,127 @@ export async function getTrafficAnalytics(): Promise<TrafficAnalytics> {
   return request<TrafficAnalytics>('/api/v1/telemetry/traffic-analytics');
 }
 
+// ── Compliance ────────────────────────────────────────────
+
+export interface ComplianceCheck {
+  name: string;
+  status: string;
+  detail: string;
+}
+
+export interface RegulatoryBody {
+  name: string;
+  status: string;
+  last_audit: string;
+  next_audit: string;
+  checks: ComplianceCheck[];
+}
+
+export interface ComplianceStatus {
+  bodies: RegulatoryBody[];
+  ntp_synced: boolean;
+  ntp_source: string;
+  overall_status: string;
+  checked_at?: string;
+}
+
+export interface SubscriberLog {
+  session_id: string;
+  subscriber_id: string;
+  ip_address: string;
+  mac_address: string;
+  olt_device: string;
+  pon_port: string;
+  start_time: string;
+  duration_minutes: number;
+  bytes_up: number;
+  bytes_down: number;
+  protocol: string;
+  status: string;
+  nat_ip: string;
+  nat_port_range: string;
+}
+
+export interface SubscriberLogsResponse {
+  logs: SubscriberLog[];
+  total: number;
+}
+
+export interface AuditEntry {
+  timestamp: string;
+  category: string;
+  user: string;
+  action: string;
+  detail: string;
+  source_ip: string;
+  result: string;
+}
+
+export interface SLAData {
+  overall_uptime_percent: number;
+  backbone_uptime_percent: number;
+  mttr_minutes: number;
+  sla_target: number;
+  current_month_downtime_minutes: number;
+  incidents_this_month: number;
+  tiers: Record<string, { uptime: number; devices: number }>;
+}
+
+export interface CertInReport {
+  organization: string;
+  sector: string;
+  incident_classification: string;
+  incident_type: string;
+  severity: string;
+  timeline: { event: string; time: string }[];
+  affected_systems: string[];
+  remediation_steps: string[];
+  reporting_compliance: {
+    within_6_hours: boolean;
+    reported_at: string;
+    deadline: string;
+    regulation: string;
+  };
+  contact: {
+    name: string;
+    designation: string;
+    phone: string;
+    email: string;
+  };
+  generated_at: string;
+}
+
+export async function getComplianceStatus(): Promise<ComplianceStatus> {
+  return request<ComplianceStatus>('/api/v1/compliance/status');
+}
+
+export async function getSubscriberLogs(
+  limit = 50,
+  offset = 0,
+  subscriberId?: string
+): Promise<SubscriberLogsResponse> {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (subscriberId) params.set('subscriber_id', subscriberId);
+  return request<SubscriberLogsResponse>(`/api/v1/compliance/subscriber-logs?${params}`);
+}
+
+export async function getAuditTrail(
+  limit = 100,
+  category?: string
+): Promise<AuditEntry[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (category) params.set('category', category);
+  return request<AuditEntry[]>(`/api/v1/compliance/audit-trail?${params}`);
+}
+
+export async function getSLAData(): Promise<SLAData> {
+  return request<SLAData>('/api/v1/compliance/sla');
+}
+
+export async function getCertInReport(incidentType = 'network_intrusion'): Promise<CertInReport> {
+  return request<CertInReport>(`/api/v1/compliance/certin-report?incident_type=${incidentType}`);
+}
+
 // ── Events ───────────────────────────────────────────────
 // Events come from WebSocket only; no REST list endpoint currently.
 
