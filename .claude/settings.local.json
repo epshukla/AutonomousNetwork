@@ -206,7 +206,11 @@
       "Bash(curl -s -X POST http://localhost:8001/api/v1/incidents/4/resolve | python3 -m json.tool && curl -s -X POST http://localhost:8001/api/v1/incidents/5/resolve | python3 -m json.tool)",
       "Bash(curl -s http://localhost:8001/api/v1/incidents/active | python3 -m json.tool)",
       "Bash(docker compose exec agent env | grep -i observe 2>&1; grep -i observe /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/.env 2>/dev/null; grep -i observe /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/docker-compose.yml 2>/dev/null)",
-      "Bash(sleep 4 && curl -s http://localhost:8001/api/v1/agent/status | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'observe_interval: {d[\\\\\"observe_interval\\\\\"]}s, running: {d[\\\\\"running\\\\\"]}'\\)\")"
+      "Bash(sleep 4 && curl -s http://localhost:8001/api/v1/agent/status | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'observe_interval: {d[\\\\\"observe_interval\\\\\"]}s, running: {d[\\\\\"running\\\\\"]}'\\)\")",
+      "Bash(cat /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-network/package.json | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k in \\('dependencies','devDependencies'\\)}, indent=2\\)\\)\")",
+      "Bash(cat /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-agent/package.json | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k in \\('dependencies','devDependencies'\\)}, indent=2\\)\\)\")",
+      "Bash(cat /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-chaos/package.json | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k in \\('dependencies','devDependencies'\\)}, indent=2\\)\\)\")",
+      "Bash(docker --version 2>/dev/null; docker compose version 2>/dev/null; node --version 2>/dev/null; python3 --version 2>/dev/null)"
     ]
   }
 }
