@@ -1,7 +1,7 @@
 # Autonomous Network Operations Center (NOC) — AI Agent
 
 > An agentic AI system that autonomously monitors, diagnoses, and remediates network incidents across a simulated ISP backbone — powered by Claude, chaos engineering, and a 4-tier human-in-the-loop autonomy framework.
-<img width="2550" height="1393" alt="Screenshot from 2026-03-08 11-19-08" src="https://github.com/user-attachments/assets/46310399-1057-40c5-8eb3-16d009d8ecd7" />
+<img width="2351" height="1341" alt="Screenshot from 2026-03-09 01-09-53" src="https://github.com/user-attachments/assets/52e42431-8b2d-43d3-8022-7427f8cb7dcf" />
 
 
 <img width="2550" height="1393" alt="Screenshot from 2026-03-08 09-46-00" src="https://github.com/user-attachments/assets/e45f7f0a-8695-4fbd-8ec3-8fe8345c72d1" />
