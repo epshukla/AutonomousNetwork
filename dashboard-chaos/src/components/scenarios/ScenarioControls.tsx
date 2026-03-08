@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Square, AlertTriangle, RotateCcw, Settings2 } from 'lucide-react';
+import { Play, Square, AlertTriangle, RotateCcw, Settings2, Timer } from 'lucide-react';
 import { ScenarioMeta, ScenarioDefaults } from '../../api/chaos';
 
 interface ScenarioControlsProps {
@@ -14,7 +14,6 @@ const paramLabels: Record<string, string> = {
   device_id: 'Device ID',
   target_device: 'Target Device',
   initial_link: 'Initial Link',
-  duration_seconds: 'Duration (seconds)',
   latency_increase_ms: 'Latency Increase (ms)',
   loss_increase_percent: 'Loss Increase (%)',
   ramp_seconds: 'Ramp Time (seconds)',
@@ -29,10 +28,15 @@ const paramLabels: Record<string, string> = {
 export const ScenarioControls: React.FC<ScenarioControlsProps> = ({ scenario, onLaunch, isLaunching }) => {
   const [parameters, setParameters] = useState<ScenarioDefaults>({});
   const [showConfirm, setShowConfirm] = useState(false);
+  const [autoStop, setAutoStop] = useState(false);
+  const [autoStopSeconds, setAutoStopSeconds] = useState(300);
 
   useEffect(() => {
     if (scenario) {
-      setParameters({ ...scenario.default_params });
+      const { duration_seconds, ...rest } = scenario.default_params;
+      setParameters({ ...rest });
+      setAutoStop(false);
+      setAutoStopSeconds(300);
       setShowConfirm(false);
     }
   }, [scenario]);
@@ -56,21 +60,33 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({ scenario, on
   };
 
   const handleReset = () => {
-    setParameters({ ...scenario.default_params });
+    const { duration_seconds, ...rest } = scenario.default_params;
+    setParameters({ ...rest });
+    setAutoStop(false);
+    setAutoStopSeconds(300);
     setShowConfirm(false);
+  };
+
+  const buildLaunchParams = (): ScenarioDefaults => {
+    const launchParams = { ...parameters };
+    delete launchParams.duration_seconds;
+    if (autoStop && autoStopSeconds > 0) {
+      launchParams.duration_seconds = autoStopSeconds;
+    }
+    return launchParams;
   };
 
   const handleLaunchClick = () => {
     if (scenario.severity === 'critical' || scenario.severity === 'emergency') {
       setShowConfirm(true);
     } else {
-      onLaunch(scenario.name, parameters);
+      onLaunch(scenario.name, buildLaunchParams());
     }
   };
 
   const handleConfirmLaunch = () => {
     setShowConfirm(false);
-    onLaunch(scenario.name, parameters);
+    onLaunch(scenario.name, buildLaunchParams());
   };
 
   const isCritical = scenario.severity === 'critical' || scenario.severity === 'emergency';
@@ -113,7 +129,9 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({ scenario, on
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(parameters).map(([key, value]) => (
+          {Object.entries(parameters)
+            .filter(([key]) => key !== 'duration_seconds')
+            .map(([key, value]) => (
             <div key={key}>
               <label className="block text-xs font-mono text-noc-muted mb-1.5">
                 {paramLabels[key] || key}
@@ -127,6 +145,55 @@ export const ScenarioControls: React.FC<ScenarioControlsProps> = ({ scenario, on
               />
             </div>
           ))}
+        </div>
+
+        {/* Auto-stop toggle */}
+        <div className="mt-4 pt-4 border-t border-noc-border/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Timer size={14} className="text-noc-muted" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-noc-muted">Auto-Stop Timer</span>
+            </div>
+            <button
+              onClick={() => setAutoStop(!autoStop)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                autoStop ? 'bg-cyan-400/30' : 'bg-noc-border'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform ${
+                  autoStop ? 'translate-x-5 bg-cyan-400' : 'translate-x-0 bg-noc-muted'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-xs text-noc-muted/60 mt-1">
+            {autoStop ? 'Scenario will auto-stop after the specified duration' : 'Scenario will run until manually stopped'}
+          </p>
+          <AnimatePresence>
+            {autoStop && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3">
+                  <label className="block text-xs font-mono text-noc-muted mb-1.5">
+                    Duration (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    value={autoStopSeconds}
+                    onChange={(e) => setAutoStopSeconds(Number(e.target.value) || 0)}
+                    min={10}
+                    step={10}
+                    className="w-full px-3 py-2 bg-noc-bg border border-noc-border rounded-lg text-sm text-noc-text font-mono focus:outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/20 transition-all"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

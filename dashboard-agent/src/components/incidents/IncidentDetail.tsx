@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, AlertCircle, Server, Clock, CheckCircle, Target, Brain, Zap, Loader2 } from 'lucide-react';
+import { X, AlertCircle, Server, Clock, CheckCircle, Target, Brain, Zap, Loader2, Crosshair } from 'lucide-react';
 import { Incident, diagnoseIncident } from '../../api/agent';
+import { formatTimestamp } from '../../utils/formatTimestamp';
 import ReasoningTrace from '../agent/ReasoningTrace';
 import Timeline from './Timeline';
 
@@ -82,7 +83,7 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
           <div>
             <div className="text-xs text-noc-muted">Detected</div>
             <div className="text-sm text-noc-text font-mono">
-              {new Date(incident.detected_at).toLocaleString()}
+              {formatTimestamp(incident.detected_at)}
             </div>
           </div>
         </div>
@@ -92,7 +93,7 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
             <div>
               <div className="text-xs text-noc-muted">Resolved</div>
               <div className="text-sm text-noc-green font-mono">
-                {new Date(incident.resolved_at).toLocaleString()}
+                {formatTimestamp(incident.resolved_at)}
               </div>
             </div>
           </div>
@@ -155,15 +156,7 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
       {/* AI Diagnosis Result */}
       {(diagnosisResult || incident.reasoning_trace) && (
         <div className="mb-6">
-          <h3 className="text-sm font-bold text-noc-text uppercase tracking-wider mb-3 flex items-center gap-2">
-            <Brain className="w-4 h-4 text-noc-cyan" />
-            AI Diagnosis
-          </h3>
-          <div className="p-4 rounded-lg bg-noc-bg/50 border border-noc-cyan/20">
-            <pre className="text-sm text-noc-text whitespace-pre-wrap font-sans leading-relaxed">
-              {diagnosisResult || incident.reasoning_trace}
-            </pre>
-          </div>
+          <ReasoningTrace trace={diagnosisResult || incident.reasoning_trace || ''} title="AI Diagnosis" />
         </div>
       )}
 
@@ -287,10 +280,11 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
             })}
             {(incident.decisions || []).map((decision) => {
               const decTier = decision.autonomy_tier ?? decision.tier ?? 1;
+              const hasParams = decision.parameters && Object.keys(decision.parameters).length > 0;
               return (
                 <div
                   key={decision.id}
-                  className={`p-3 rounded-lg border ${
+                  className={`rounded-xl border overflow-hidden ${
                     decision.status === 'executed'
                       ? 'bg-noc-green/5 border-noc-green/20'
                       : decision.status === 'pending' || decision.status === 'pending_approval'
@@ -300,36 +294,96 @@ export default function IncidentDetail({ incident, onClose }: IncidentDetailProp
                       : 'bg-noc-bg/40 border-noc-border/20'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-noc-text">
-                        {(decision.action_type || '').replace(/_/g, ' ')}
-                      </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                        decTier <= 2
-                          ? 'text-noc-green bg-noc-green/10 border-noc-green/30'
-                          : decTier === 3
-                          ? 'text-noc-amber bg-noc-amber/10 border-noc-amber/30'
-                          : 'text-noc-red bg-noc-red/10 border-noc-red/30'
+                  {/* Card Header */}
+                  <div className="p-4 border-b border-noc-border/10">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-bold text-noc-text truncate">
+                          {(decision as any).description || (decision.action_type || '').replace(/_/g, ' ')}
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${
+                          decTier <= 2
+                            ? 'text-noc-green bg-noc-green/10 border-noc-green/30'
+                            : decTier === 3
+                            ? 'text-noc-amber bg-noc-amber/10 border-noc-amber/30'
+                            : 'text-noc-red bg-noc-red/10 border-noc-red/30'
+                        }`}>
+                          Tier {decTier}
+                        </span>
+                      </div>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded flex-shrink-0 ${
+                        decision.status === 'executed' ? 'text-noc-green bg-noc-green/10'
+                        : decision.status === 'pending' || decision.status === 'pending_approval' ? 'text-noc-amber bg-noc-amber/10'
+                        : decision.status === 'failed' ? 'text-noc-red bg-noc-red/10'
+                        : decision.status === 'rejected' ? 'text-noc-red bg-noc-red/10'
+                        : 'text-noc-muted bg-noc-surface'
                       }`}>
-                        Tier {decTier}
+                        {decision.status === 'pending' ? 'PENDING APPROVAL' : (decision.status || '').toUpperCase()}
                       </span>
                     </div>
-                    <span className={`text-xs font-semibold ${
-                      decision.status === 'executed' ? 'text-noc-green'
-                      : decision.status === 'pending' || decision.status === 'pending_approval' ? 'text-noc-amber'
-                      : decision.status === 'failed' ? 'text-noc-red'
-                      : 'text-noc-muted'
-                    }`}>
-                      {decision.status}
-                    </span>
+                    {(decision as any).description && (
+                      <span className="text-[10px] text-noc-muted font-mono">
+                        {(decision.action_type || '').replace(/_/g, ' ')}
+                      </span>
+                    )}
+                    {/* Confidence & Blast Radius */}
+                    <div className="flex items-center gap-4 mt-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-noc-muted uppercase">Confidence</span>
+                        <div className="w-16 h-1.5 rounded-full bg-noc-border/30 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              decision.confidence >= 0.8 ? 'bg-noc-green'
+                              : decision.confidence >= 0.6 ? 'bg-noc-amber'
+                              : 'bg-noc-red'
+                            }`}
+                            style={{ width: `${decision.confidence * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-noc-text">{Math.round(decision.confidence * 100)}%</span>
+                      </div>
+                      {decision.blast_radius_estimate && (
+                        <div className="flex items-center gap-1">
+                          <Crosshair className="w-3 h-3 text-noc-red" />
+                          <span className="text-[10px] text-noc-muted uppercase">Blast Radius</span>
+                          <span className="text-xs font-mono text-noc-red">
+                            ~{Number(decision.blast_radius_estimate).toLocaleString()} customers
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-noc-muted mt-1">{decision.reasoning}</p>
-                  {decision.outcome && (
-                    <p className="text-xs text-noc-green mt-2 p-2 bg-noc-green/5 rounded">
-                      Outcome: {decision.outcome}
-                    </p>
-                  )}
+
+                  {/* Card Body */}
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-noc-muted uppercase tracking-wider">Reasoning</span>
+                      <p className="text-xs text-noc-muted mt-1">{decision.reasoning}</p>
+                    </div>
+
+                    {hasParams && (
+                      <div>
+                        <span className="text-[10px] font-bold text-noc-cyan uppercase tracking-wider">Command</span>
+                        <pre className="mt-1 p-3 rounded-lg bg-noc-bg/80 border border-noc-cyan/20 text-xs text-noc-text font-mono overflow-x-auto">
+                          {JSON.stringify(decision.parameters, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {(decision as any).expected_result && (
+                      <div className="p-2.5 rounded-lg bg-noc-cyan/5 border border-noc-cyan/15">
+                        <span className="text-[10px] font-bold text-noc-cyan uppercase tracking-wider">Expected Result</span>
+                        <p className="text-xs text-noc-text mt-1">{(decision as any).expected_result}</p>
+                      </div>
+                    )}
+
+                    {decision.outcome && decision.status === 'executed' && (
+                      <div className="p-2.5 rounded-lg bg-noc-green/5 border border-noc-green/15">
+                        <span className="text-[10px] font-bold text-noc-green uppercase tracking-wider">Outcome</span>
+                        <p className="text-xs text-noc-green mt-1">{decision.outcome}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}

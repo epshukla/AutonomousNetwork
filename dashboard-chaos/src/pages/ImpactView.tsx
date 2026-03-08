@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -32,17 +32,20 @@ const ImpactView: React.FC = () => {
 
   const [elapsedTimers, setElapsedTimers] = useState<Record<string, number>>({});
 
+  const activeScenariosRef = useRef(activeScenarios);
+  activeScenariosRef.current = activeScenarios;
+
   useEffect(() => {
     const interval = setInterval(() => {
       const timers: Record<string, number> = {};
-      activeScenarios.forEach((s) => {
+      activeScenariosRef.current.forEach((s) => {
         const startTime = new Date(s.started_at).getTime();
         timers[s.scenario_name] = Math.floor((Date.now() - startTime) / 1000);
       });
       setElapsedTimers(timers);
     }, 1000);
     return () => clearInterval(interval);
-  }, [activeScenarios]);
+  }, []);
 
   const formatTimer = (seconds: number): string => {
     const m = Math.floor(seconds / 60);

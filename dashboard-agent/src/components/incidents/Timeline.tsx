@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { AlertCircle, Search, Zap, CheckCircle, ArrowUpRight } from 'lucide-react';
 import { TimelineEvent } from '../../api/agent';
+import { formatTimeOnly } from '../../utils/formatTimestamp';
 
 interface TimelineProps {
   events: TimelineEvent[];
@@ -45,7 +46,7 @@ export default function Timeline({ events }: TimelineProps) {
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-sm font-semibold ${config.color}`}>{event.event}</span>
                   <span className="text-xs text-noc-muted font-mono">
-                    {new Date(event.timestamp).toLocaleTimeString()}
+                    {formatTimeOnly(event.timestamp)}
                   </span>
                 </div>
                 <p className="text-xs text-noc-muted">{event.details}</p>

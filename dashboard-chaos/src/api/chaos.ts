@@ -97,7 +97,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'Scissors',
     expected_effects: ['Complete link failure', 'Traffic rerouting via backup paths', 'Increased latency on alternate routes', 'Possible packet loss during convergence'],
     affected_components: ['Primary link', 'Connected routers', 'Dependent services'],
-    default_params: { link_id: 'link-del-mum-primary', duration_seconds: 300 },
+    default_params: { link_id: 'link-del-mum-primary' },
     is_active: false,
     category: 'link',
   },
@@ -109,7 +109,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'TrendingDown',
     expected_effects: ['Steadily rising latency', 'Increasing packet loss', 'Quality of service degradation', 'Threshold alarms triggering sequentially'],
     affected_components: ['Target link', 'End-to-end path quality', 'SLA metrics'],
-    default_params: { link_id: 'link-del-mum-primary', latency_increase_ms: 50, loss_increase_percent: 3.0, ramp_seconds: 180, duration_seconds: 600 },
+    default_params: { link_id: 'link-del-mum-primary', latency_increase_ms: 50, loss_increase_percent: 3.0, ramp_seconds: 180 },
     is_active: false,
     category: 'link',
   },
@@ -121,7 +121,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'Zap',
     expected_effects: ['Interface saturation', 'CPU/memory spike on target', 'Collateral congestion on upstream links', 'Service unavailability'],
     affected_components: ['Target device', 'Upstream links', 'Connected customers'],
-    default_params: { target_device: 'edge-delhi-north', traffic_multiplier: 5.0, duration_seconds: 300 },
+    default_params: { target_device: 'edge-delhi-north', traffic_multiplier: 5.0 },
     is_active: false,
     category: 'security',
   },
@@ -133,7 +133,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'ServerCrash',
     expected_effects: ['All device ports go down', 'Connected links fail', 'Routing reconvergence', 'Traffic black-holing during failover'],
     affected_components: ['Target device', 'All connected links', 'Routing domain'],
-    default_params: { device_id: 'core-delhi-1', ramp_seconds: 30, duration_seconds: 300 },
+    default_params: { device_id: 'core-delhi-1', ramp_seconds: 30 },
     is_active: false,
     category: 'device',
   },
@@ -145,7 +145,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'Route',
     expected_effects: ['Route table pollution', 'Traffic misdirection', 'Potential loops', 'Widespread reachability issues'],
     affected_components: ['BGP peering router', 'Global routing table', 'Internet-facing services'],
-    default_params: { device_id: 'peer-delhi-1', leaked_prefixes: 50000, duration_seconds: 300 },
+    default_params: { device_id: 'peer-delhi-1', leaked_prefixes: 50000 },
     is_active: false,
     category: 'routing',
   },
@@ -157,7 +157,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'Network',
     expected_effects: ['Initial link congestion', 'Cascading overload on neighbors', 'Progressive quality degradation', 'Network-wide impact'],
     affected_components: ['Initial link', 'Adjacent links', 'Regional network segment'],
-    default_params: { initial_link: 'link-del-c1-en', cascade_delay_seconds: 15, duration_seconds: 300 },
+    default_params: { initial_link: 'link-del-c1-en', cascade_delay_seconds: 15 },
     is_active: false,
     category: 'link',
   },
@@ -169,7 +169,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'MemoryStick',
     expected_effects: ['Gradual memory increase', 'Performance degradation', 'Process restarts', 'Eventual device crash at threshold'],
     affected_components: ['Target device', 'Device processes', 'Connected services'],
-    default_params: { device_id: 'core-mumbai-1', leak_rate_percent_per_minute: 5.0, crash_threshold: 98.0, duration_seconds: 600 },
+    default_params: { device_id: 'core-mumbai-1', leak_rate_percent_per_minute: 5.0, crash_threshold: 98.0 },
     is_active: false,
     category: 'device',
   },
@@ -181,7 +181,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     icon: 'Activity',
     expected_effects: ['Rapid link state changes', 'Routing table instability', 'Control plane CPU spikes', 'Dampening mechanism activation'],
     affected_components: ['Flapping link', 'Connected routers', 'Routing protocol stability'],
-    default_params: { link_id: 'link-del-mum-primary', flap_interval_seconds: 10, duration_seconds: 300 },
+    default_params: { link_id: 'link-del-mum-primary', flap_interval_seconds: 10 },
     is_active: false,
     category: 'link',
   },
@@ -241,9 +241,18 @@ export const chaosApi = {
     }
   },
 
-  // Get active scenarios
-  getActive: () =>
-    fetchJSON<ActiveScenario[]>(`${SIMULATOR_URL}/api/v1/chaos/active`).catch(() => []),
+  // Get active scenarios (normalize backend field names)
+  getActive: async (): Promise<ActiveScenario[]> => {
+    const raw = await fetchJSON<any[]>(`${SIMULATOR_URL}/api/v1/chaos/active`).catch(() => []);
+    return raw.map((r) => ({
+      id: r.run_id ?? r.id,
+      scenario_name: r.scenario ?? r.scenario_name,
+      params: r.params ?? {},
+      started_at: r.started_at,
+      ended_at: r.ended_at ?? null,
+      status: 'running' as const,
+    }));
+  },
 
   // Get chaos history
   getHistory: () =>

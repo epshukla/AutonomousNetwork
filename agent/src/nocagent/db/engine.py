@@ -29,9 +29,16 @@ async def get_session() -> AsyncSession:
 
 async def init_db():
     from nocagent.models.base import Base
+    from sqlalchemy import text
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # Add category column to existing decisions table (idempotent)
+        await conn.execute(text(
+            "ALTER TABLE decisions ADD COLUMN IF NOT EXISTS "
+            "category TEXT DEFAULT 'software'"
+        ))
 
     logger.info("agent_database_initialized")
 

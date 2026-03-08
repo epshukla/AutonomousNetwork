@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Search, Filter, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { Incident } from '../../api/agent';
+import { formatTimestamp } from '../../utils/formatTimestamp';
 
 interface IncidentListProps {
   incidents: Incident[];
@@ -204,7 +205,7 @@ export default function IncidentList({ incidents, onSelect, selectedId }: Incide
                     </td>
                     <td className="p-3">
                       <span className="text-sm text-noc-muted font-mono">
-                        {new Date(incident.detected_at).toLocaleString()}
+                        {formatTimestamp(incident.detected_at)}
                       </span>
                     </td>
                     <td className="p-3">

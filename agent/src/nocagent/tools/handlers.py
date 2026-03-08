@@ -110,9 +110,36 @@ async def escalate_to_engineer(params: dict) -> dict:
     }
 
 
+async def replace_hardware(params: dict) -> dict:
+    """Physical task — logged as work order for field team."""
+    return {
+        "status": "logged",
+        "message": f"Hardware replacement work order created: {params.get('component', 'unknown')} on {params.get('device_id', 'unknown')}",
+    }
+
+
+async def dispatch_field_tech(params: dict) -> dict:
+    """Physical task — field technician dispatch logged."""
+    return {
+        "status": "logged",
+        "message": f"Field technician dispatch to {params.get('location', 'unknown')}: {params.get('task', '')}",
+    }
+
+
+async def resplice_fiber(params: dict) -> dict:
+    """Physical task — fiber re-splice work order created."""
+    return {
+        "status": "logged",
+        "message": f"Fiber re-splice work order for {params.get('link_id', 'unknown')} at {params.get('location', 'unknown')}",
+    }
+
+
 TOOL_HANDLERS = {
     "execute_reroute": execute_reroute,
     "apply_rate_limit": apply_rate_limit,
     "restart_device": restart_device,
     "escalate_to_engineer": escalate_to_engineer,
+    "replace_hardware": replace_hardware,
+    "dispatch_field_tech": dispatch_field_tech,
+    "resplice_fiber": resplice_fiber,
 }

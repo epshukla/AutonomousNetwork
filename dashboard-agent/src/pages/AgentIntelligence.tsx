@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import HealthBadge from '../components/common/HealthBadge';
 import { getAgentMetrics, getLearningRecords, AgentMetrics, LearningRecord } from '../api/agent';
+import { formatTimestamp } from '../utils/formatTimestamp';
 
 export default function AgentIntelligence() {
   const [metrics, setMetrics] = useState<AgentMetrics | null>(null);
@@ -393,7 +394,7 @@ export default function AgentIntelligence() {
               {learning.map((record) => (
                 <tr key={record.id} className="border-b border-noc-border/10 hover:bg-noc-surface/20 transition-colors">
                   <td className="p-3 text-sm text-noc-muted font-mono whitespace-nowrap">
-                    {new Date(record.timestamp).toLocaleDateString()}
+                    {formatTimestamp(record.timestamp)}
                   </td>
                   <td className="p-3">
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-noc-cyan/10 text-noc-cyan">

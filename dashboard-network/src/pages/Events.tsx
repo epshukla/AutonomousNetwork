@@ -16,6 +16,7 @@ import {
 
 import { useEvents } from '../hooks/useTelemetry';
 import type { NetworkEvent } from '../api/simulator';
+import { formatTimeOnly } from '../utils/formatTimestamp';
 
 // ── Severity Config ───────────────────────────────────────
 
@@ -71,23 +72,12 @@ function EventRow({ event, index }: { event: NetworkEvent; index: number }) {
   const Icon = config.icon;
 
   const ts = event.timestamp || '';
-  const timestamp = (() => {
-    try {
-      const d = new Date(ts);
-      return d.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-    } catch {
-      return ts;
-    }
-  })();
-
+  const timestamp = formatTimeOnly(ts);
   const dateStr = (() => {
     try {
       const d = new Date(ts);
-      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch {
       return '';
     }

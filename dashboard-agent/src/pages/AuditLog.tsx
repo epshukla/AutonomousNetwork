@@ -13,6 +13,7 @@ import {
   Download,
 } from 'lucide-react';
 import { getDecisions, Decision } from '../api/agent';
+import { formatTimestamp } from '../utils/formatTimestamp';
 
 export default function AuditLog() {
   const [decisions, setDecisions] = useState<Decision[]>([]);
@@ -219,6 +220,7 @@ export default function AuditLog() {
                 >
                   Tier <SortIcon field="tier" />
                 </th>
+                <th className="text-left p-3 text-xs font-bold text-noc-muted uppercase tracking-wider">Status</th>
                 <th
                   className="text-left p-3 text-xs font-bold text-noc-muted uppercase tracking-wider cursor-pointer hover:text-noc-cyan transition-colors"
                   onClick={() => handleSort('confidence')}
@@ -249,16 +251,24 @@ export default function AuditLog() {
                       </td>
                       <td className="p-3">
                         <span className="text-sm font-mono text-noc-text whitespace-nowrap">
-                          {new Date(decision.timestamp).toLocaleString()}
+                          {formatTimestamp(decision.timestamp)}
                         </span>
                       </td>
                       <td className="p-3">
-                        <span className="text-sm font-mono text-noc-cyan">{decision.incident_id}</span>
+                        <div>
+                          <span className="text-sm text-noc-text truncate block max-w-[200px]">{decision.incident_title || '--'}</span>
+                          <span className="text-xs font-mono text-noc-muted">INC-{decision.incident_id}</span>
+                        </div>
                       </td>
                       <td className="p-3">
                         <span className="text-sm text-noc-text">
-                          {(decision.action_type || '').replace(/_/g, ' ')}
+                          {(decision as any).description || (decision.action_type || '').replace(/_/g, ' ')}
                         </span>
+                        {(decision as any).description && (
+                          <span className="block text-[10px] text-noc-muted font-mono">
+                            {(decision.action_type || '').replace(/_/g, ' ')}
+                          </span>
+                        )}
                       </td>
                       <td className="p-3">
                         <span
@@ -267,6 +277,16 @@ export default function AuditLog() {
                           }`}
                         >
                           T{decision.tier}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                          decision.status === 'executed' ? 'text-noc-cyan bg-noc-cyan/10'
+                          : decision.status === 'pending' || decision.status === 'pending_approval' ? 'text-noc-amber bg-noc-amber/10'
+                          : decision.status === 'rejected' ? 'text-noc-red bg-noc-red/10'
+                          : 'text-noc-muted bg-noc-surface'
+                        }`}>
+                          {decision.status}
                         </span>
                       </td>
                       <td className="p-3">
@@ -310,7 +330,7 @@ export default function AuditLog() {
                     <AnimatePresence>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={9}>
+                          <td colSpan={10}>
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
@@ -318,20 +338,54 @@ export default function AuditLog() {
                               transition={{ duration: 0.2 }}
                               className="border-b border-noc-border/20 overflow-hidden"
                             >
-                              <div className="p-4 bg-noc-bg/40 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="text-xs font-bold text-noc-cyan uppercase tracking-wider mb-2">
-                                    Reasoning
-                                  </h4>
-                                  <p className="text-sm text-noc-muted leading-relaxed">{decision.reasoning}</p>
+                              <div className="p-4 bg-noc-bg/40 space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <h4 className="text-xs font-bold text-noc-cyan uppercase tracking-wider mb-2">
+                                      Reasoning
+                                    </h4>
+                                    <p className="text-sm text-noc-muted leading-relaxed">{decision.reasoning}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xs font-bold text-noc-cyan uppercase tracking-wider mb-2">
+                                      Command
+                                    </h4>
+                                    <pre className="text-xs text-noc-text font-mono bg-noc-bg/60 p-3 rounded-lg border border-noc-cyan/20 overflow-x-auto">
+                                      {JSON.stringify(decision.parameters, null, 2)}
+                                    </pre>
+                                  </div>
                                 </div>
-                                <div>
-                                  <h4 className="text-xs font-bold text-noc-cyan uppercase tracking-wider mb-2">
-                                    Parameters
-                                  </h4>
-                                  <pre className="text-xs text-noc-text font-mono bg-noc-bg/60 p-3 rounded-lg border border-noc-border/20 overflow-x-auto">
-                                    {JSON.stringify(decision.parameters, null, 2)}
-                                  </pre>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-noc-border/10">
+                                  <div>
+                                    <h4 className="text-xs font-bold text-noc-muted uppercase tracking-wider mb-1">Confidence</h4>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-24 h-2 rounded-full bg-noc-border/30 overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full ${
+                                            decision.confidence >= 0.8 ? 'bg-noc-green'
+                                            : decision.confidence >= 0.6 ? 'bg-noc-amber'
+                                            : 'bg-noc-red'
+                                          }`}
+                                          style={{ width: `${decision.confidence * 100}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-sm font-mono text-noc-text">{Math.round(decision.confidence * 100)}%</span>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xs font-bold text-noc-muted uppercase tracking-wider mb-1">Blast Radius</h4>
+                                    <span className="text-sm font-mono text-noc-red">
+                                      {decision.blast_radius_estimate
+                                        ? `~${Number(decision.blast_radius_estimate).toLocaleString()} customers`
+                                        : 'N/A'}
+                                    </span>
+                                  </div>
+                                  {(decision as any).expected_result && (
+                                    <div>
+                                      <h4 className="text-xs font-bold text-noc-cyan uppercase tracking-wider mb-1">Expected Result</h4>
+                                      <p className="text-sm text-noc-text">{(decision as any).expected_result}</p>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </motion.div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, Play, Pause, Clock, RotateCw, Cpu, Zap } from 'lucide-react';
 import { getAgentStatus, AgentStatus as AgentStatusType } from '../../api/agent';
+import { formatTimestamp } from '../../utils/formatTimestamp';
 import StatusDot from '../common/StatusDot';
 
 export default function AgentStatusCard() {
@@ -112,7 +113,7 @@ export default function AgentStatusCard() {
           <div className="flex items-center justify-between text-xs">
             <span className="text-noc-muted">Started At</span>
             <span className="text-noc-text font-mono">
-              {new Date(status.started_at).toLocaleTimeString()}
+              {formatTimestamp(status.started_at)}
             </span>
           </div>
         </div>

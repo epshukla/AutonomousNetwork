@@ -118,10 +118,29 @@ export interface Decision {
   outcome: string | null;
   outcome_success: boolean | null;
   blast_radius_estimate: string | null;
+  category: 'software' | 'physical' | 'informational';
+  description: string;
+  expected_result: string;
+  outcome_data: any;
   // Computed compatibility fields used by UI components
   tier: number;
   timestamp: string;
   execution_time_ms: number;
+}
+
+export interface FieldTask {
+  id: string;
+  incident_id: string;
+  incident_title: string;
+  incident_severity: string;
+  action_type: string;
+  category: 'physical';
+  reasoning: string;
+  parameters: Record<string, unknown>;
+  status: 'logged' | 'in_progress' | 'completed';
+  created_at: string;
+  blast_radius_estimate: string | null;
+  notes: string | null;
 }
 
 export interface LearningRecord {
@@ -266,6 +285,26 @@ export async function getIncidents(): Promise<Incident[]> {
   }
 }
 
+// Open (undiagnosed) incidents — waiting for engineer to trigger AI analysis
+export async function getOpenIncidents(): Promise<Incident[]> {
+  try {
+    const raw = await fetchJSON<any[]>(`${AGENT_URL}/api/v1/incidents?status=open`);
+    return raw.map(normalizeIncident);
+  } catch {
+    return [];
+  }
+}
+
+// Active (non-resolved) incidents with decisions — for Approval Panel lifecycle
+export async function getActiveIncidents(): Promise<Incident[]> {
+  try {
+    const raw = await fetchJSON<any[]>(`${AGENT_URL}/api/v1/incidents/active`);
+    return raw.map(normalizeIncident);
+  } catch {
+    return [];
+  }
+}
+
 function normalizeIncident(r: any): Incident {
   return {
     id: String(r.id),
@@ -355,10 +394,29 @@ export async function rejectAction(incidentId: string, reason?: string): Promise
   }
 }
 
+export async function resolveIncident(incidentId: string): Promise<void> {
+  await fetchJSON(`${AGENT_URL}/api/v1/incidents/${incidentId}/resolve`, { method: 'POST' });
+}
+
 function normalizeDecision(d: any): Decision {
   // Map backend field names to what the UI expects
   const tier = d.autonomy_tier ?? d.tier ?? 1;
   const timestamp = d.created_at ?? d.timestamp ?? new Date().toISOString();
+  const params = d.parameters || {};
+
+  // Extract display metadata stored with _ prefix in parameters JSONB
+  const description = params._description || '';
+  const expectedResult = params._expected_result || '';
+  const cleanParams = { ...params };
+  delete cleanParams._description;
+  delete cleanParams._expected_result;
+
+  // Parse raw execution result before overwriting outcome
+  let outcomeData: any = null;
+  if (d.outcome && typeof d.outcome === 'string') {
+    try { outcomeData = JSON.parse(d.outcome); } catch { outcomeData = d.outcome; }
+  }
+
   // Map status to an outcome string the UI understands
   let uiOutcome: string = d.outcome ?? d.status ?? 'pending';
   if (d.outcome_success === true) uiOutcome = 'success';
@@ -375,13 +433,17 @@ function normalizeDecision(d: any): Decision {
     autonomy_tier: tier,
     confidence: d.confidence ?? 0,
     reasoning: d.reasoning || '',
-    parameters: d.parameters || {},
+    parameters: cleanParams,
     status: d.status || 'pending',
     created_at: d.created_at || new Date().toISOString(),
     executed_at: d.executed_at || null,
     outcome: uiOutcome,
     outcome_success: d.outcome_success ?? null,
     blast_radius_estimate: d.blast_radius_estimate || null,
+    category: d.category || 'software',
+    description,
+    expected_result: expectedResult,
+    outcome_data: outcomeData,
     // Compatibility fields for UI
     tier,
     timestamp,
@@ -399,6 +461,40 @@ export async function getDecisions(limit = 100): Promise<Decision[]> {
   } catch {
     return [];
   }
+}
+
+// Field Tasks (physical actions for ISP field team)
+export async function getFieldTasks(): Promise<FieldTask[]> {
+  try {
+    const raw = await fetchJSON<any[]>(`${AGENT_URL}/api/v1/decisions/field-tasks`);
+    return raw.map((d) => ({
+      id: String(d.id ?? ''),
+      incident_id: String(d.incident_id ?? ''),
+      incident_title: d.incident_title || '',
+      incident_severity: d.incident_severity || 'medium',
+      action_type: d.action_type || 'unknown',
+      category: 'physical' as const,
+      reasoning: d.reasoning || '',
+      parameters: d.parameters || {},
+      status: d.status || 'logged',
+      created_at: d.created_at || new Date().toISOString(),
+      blast_radius_estimate: d.blast_radius_estimate || null,
+      notes: d.notes || null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function updateFieldTaskStatus(
+  id: string,
+  status: 'in_progress' | 'completed',
+  notes?: string
+): Promise<void> {
+  await fetchJSON(`${AGENT_URL}/api/v1/decisions/${id}/field-status`, {
+    method: 'POST',
+    body: JSON.stringify({ status, notes: notes || '' }),
+  });
 }
 
 // Agent Metrics (from learning/effectiveness endpoint) — map raw fields to UI shape

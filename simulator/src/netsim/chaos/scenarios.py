@@ -30,7 +30,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
         severity="critical",
         default_params={
             "link_id": "link-del-mum-primary",
-            "duration_seconds": 300,
         },
         expected_effects=[
             "Link goes DOWN immediately",
@@ -51,7 +50,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
             "latency_increase_ms": 50,
             "loss_increase_percent": 3.0,
             "ramp_seconds": 180,
-            "duration_seconds": 600,
         },
         expected_effects=[
             "Latency gradually increases",
@@ -70,7 +68,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
         default_params={
             "target_device": "edge-delhi-north",
             "traffic_multiplier": 5.0,
-            "duration_seconds": 300,
         },
         expected_effects=[
             "CPU spike on target device",
@@ -89,7 +86,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
         default_params={
             "device_id": "core-delhi-1",
             "ramp_seconds": 30,
-            "duration_seconds": 300,
         },
         expected_effects=[
             "CPU spikes to 100%",
@@ -109,7 +105,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
         default_params={
             "device_id": "peer-delhi-1",
             "leaked_prefixes": 50000,
-            "duration_seconds": 300,
         },
         expected_effects=[
             "Sudden spike in received prefixes",
@@ -128,7 +123,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
         default_params={
             "initial_link": "link-del-c1-en",
             "cascade_delay_seconds": 15,
-            "duration_seconds": 300,
         },
         expected_effects=[
             "Initial link goes DOWN",
@@ -149,7 +143,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
             "device_id": "core-mumbai-1",
             "leak_rate_percent_per_minute": 5.0,
             "crash_threshold": 98.0,
-            "duration_seconds": 600,
         },
         expected_effects=[
             "Memory utilization slowly climbs",
@@ -168,7 +161,6 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
         default_params={
             "link_id": "link-del-mum-primary",
             "flap_interval_seconds": 10,
-            "duration_seconds": 300,
         },
         expected_effects=[
             "Link alternates UP/DOWN rapidly",

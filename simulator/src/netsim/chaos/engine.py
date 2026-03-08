@@ -105,23 +105,28 @@ class ChaosEngine:
         if not active:
             return {"error": f"Scenario '{name}' is not running"}
 
+        db_id = active.db_id
         active.stop_event.set()
+
+        # Remove from active FIRST to prevent _run_scenario's finally block
+        # from double-completing
+        self._active.pop(name, None)
+
         if active.task:
             try:
                 await asyncio.wait_for(active.task, timeout=10)
-            except asyncio.TimeoutError:
+            except (asyncio.TimeoutError, asyncio.CancelledError):
                 active.task.cancel()
 
-        await self._complete_run(active.db_id)
-        del self._active[name]
+        await self._complete_run(db_id)
 
         await event_bus.publish(CHANNEL_CHAOS, {
             "action": "stopped",
             "scenario": name,
         })
 
-        logger.info("chaos_scenario_stopped", scenario=name)
-        return {"status": "stopped", "scenario": name}
+        logger.info("chaos_scenario_stopped", scenario=name, run_id=db_id)
+        return {"status": "stopped", "scenario": name, "run_id": db_id}
 
     async def _run_scenario(
         self,
@@ -196,8 +201,8 @@ class ChaosEngine:
             async with session.begin():
                 result = await session.execute(
                     text(
-                        "INSERT INTO chaos_runs (scenario_name, params) "
-                        "VALUES (:name, CAST(:params AS jsonb)) RETURNING id"
+                        "INSERT INTO chaos_runs (scenario_name, params, status) "
+                        "VALUES (:name, CAST(:params AS jsonb), 'running') RETURNING id"
                     ),
                     {"name": name, "params": json.dumps(params)},
                 )

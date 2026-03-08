@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Radio,
+  HardHat,
 } from 'lucide-react';
 import { useAgentEvents } from './hooks/useAgentEvents';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -19,11 +20,13 @@ import Incidents from './pages/Incidents';
 import ApprovalPanel from './pages/ApprovalPanel';
 import AgentIntelligence from './pages/AgentIntelligence';
 import AuditLog from './pages/AuditLog';
+import FieldTasks from './pages/FieldTasks';
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Command Center' },
   { path: '/incidents', icon: AlertTriangle, label: 'Incidents' },
   { path: '/approvals', icon: ShieldCheck, label: 'Approval Panel' },
+  { path: '/field-tasks', icon: HardHat, label: 'Field Tasks' },
   { path: '/intelligence', icon: Brain, label: 'Agent Intelligence' },
   { path: '/audit', icon: ScrollText, label: 'Audit Log' },
 ];
@@ -183,6 +186,7 @@ export default function App() {
                   <Route path="/" element={<CommandCenter />} />
                   <Route path="/incidents" element={<Incidents />} />
                   <Route path="/approvals" element={<ApprovalPanel />} />
+                  <Route path="/field-tasks" element={<FieldTasks />} />
                   <Route path="/intelligence" element={<AgentIntelligence />} />
                   <Route path="/audit" element={<AuditLog />} />
                 </Routes>

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Search, Wrench, CheckCircle2, XCircle, Clock, Brain, Shield, AlertTriangle } from 'lucide-react';
 import { AgentIncident, AgentAction } from '../../api/chaos';
+import { formatTimeOnly } from '../../utils/formatTimestamp';
 import StatusDot from '../common/StatusDot';
 
 interface AgentResponseProps {
@@ -95,7 +96,7 @@ export const AgentResponse: React.FC<AgentResponseProps> = ({ incidents }) => {
                 )}
               </div>
               <span className="text-xs text-noc-muted font-mono whitespace-nowrap">
-                {incident.detected_at ? new Date(incident.detected_at).toLocaleTimeString() : '--'}
+                {formatTimeOnly(incident.detected_at)}
               </span>
             </div>
 
@@ -118,7 +119,7 @@ export const AgentResponse: React.FC<AgentResponseProps> = ({ incidents }) => {
                       <p className="text-xs text-noc-muted">{action.description}</p>
                     </div>
                     <span className="text-xs text-noc-muted font-mono whitespace-nowrap">
-                      {action.timestamp ? new Date(action.timestamp).toLocaleTimeString() : ''}
+                      {formatTimeOnly(action.timestamp)}
                     </span>
                   </motion.div>
                 ))}

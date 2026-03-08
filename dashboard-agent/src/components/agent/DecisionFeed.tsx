@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, CheckCircle, XCircle, Clock, Ban, ChevronDown, ChevronUp } from 'lucide-react';
 import { getDecisions, Decision } from '../../api/agent';
+import { formatRelativeTime } from '../../utils/formatTimestamp';
 
 interface DecisionFeedProps {
   limit?: number;
@@ -34,15 +35,6 @@ export default function DecisionFeed({ limit = 10, compact = false }: DecisionFe
     2: 'text-noc-cyan bg-noc-cyan/10 border-noc-cyan/30',
     3: 'text-noc-amber bg-noc-amber/10 border-noc-amber/30',
     4: 'text-noc-red bg-noc-red/10 border-noc-red/30',
-  };
-
-  const formatTime = (ts: string) => {
-    const d = new Date(ts);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    return d.toLocaleTimeString();
   };
 
   return (
@@ -94,7 +86,7 @@ export default function DecisionFeed({ limit = 10, compact = false }: DecisionFe
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className="text-xs text-noc-muted">{decision.incident_id}</span>
-                      <span className="text-xs text-noc-muted">{formatTime(decision.timestamp)}</span>
+                      <span className="text-xs text-noc-muted">{formatRelativeTime(decision.timestamp)}</span>
                       <span className="text-xs text-noc-cyan font-mono">
                         {Math.round(decision.confidence * 100)}%
                       </span>

@@ -1,8 +1,9 @@
 """
-Main agent loop — Observe + Detect + Auto-Incident + Learn.
+Main agent loop — Observe + Detect only.
 
-Claude is NOT called in the loop. Claude is only called on-demand
-when a user clicks "Diagnose" on an incident in the dashboard.
+The loop NEVER creates incidents or calls Claude on its own.
+Incident + diagnosis happens ONCE per chaos run — tracked by run_id
+so the same chaos scenario never triggers twice.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from nocagent.core.observer import observer
 from nocagent.core.anomaly_detector import anomaly_detector, Anomaly
 from nocagent.core.learner import learner
 from nocagent.db.engine import async_session
+from nocagent.tools.handlers import get_http_client
 from nocagent.events import agent_event_bus
 
 logger = structlog.get_logger()
@@ -36,6 +38,30 @@ class NOCAgent:
         self._loop_count = 0
         self._anomalies_detected = 0
         self._incidents_created = 0
+        # Track chaos run IDs we already handled — prevents repeat calls
+        self._handled_chaos_runs: set[int] = set()
+
+    async def _load_handled_runs(self):
+        """Reload previously handled chaos run IDs from incident metadata."""
+        try:
+            async with async_session() as session:
+                result = await session.execute(
+                    text(
+                        "SELECT metadata FROM incidents "
+                        "WHERE metadata IS NOT NULL "
+                        "AND metadata->>'chaos_run_ids' IS NOT NULL"
+                    )
+                )
+                for row in result.fetchall():
+                    meta = row.metadata if isinstance(row.metadata, dict) else {}
+                    for run_id in meta.get("chaos_run_ids", []):
+                        self._handled_chaos_runs.add(run_id)
+            logger.info(
+                "loaded_handled_chaos_runs",
+                count=len(self._handled_chaos_runs),
+            )
+        except Exception as exc:
+            logger.warning("failed_to_load_handled_runs", error=str(exc))
 
     @property
     def status(self) -> dict:
@@ -60,6 +86,7 @@ class NOCAgent:
             return
         self._running = True
         self._started_at = datetime.now(timezone.utc)
+        await self._load_handled_runs()
         self._task = asyncio.create_task(self._run())
         logger.info("noc_agent_started", mode=self._mode)
         await agent_event_bus.publish("agent_started", {"mode": self._mode})
@@ -101,27 +128,43 @@ class NOCAgent:
                 logger.exception("agent_loop_error", error=str(exc), error_type=type(exc).__name__)
             await asyncio.sleep(settings.observe_interval_seconds)
 
-    async def _observe_and_detect(self):
-        """Observe → Detect → Auto-create incidents. NO Claude calls."""
+    async def _get_new_chaos_runs(self) -> list[dict]:
+        """Return chaos runs we haven't handled yet. Empty = nothing to do."""
+        try:
+            client = get_http_client()
+            resp = await client.get("/api/v1/chaos/active")
+            active = resp.json()
+            # Filter out runs we already created an incident for
+            new_runs = [r for r in active if r.get("run_id") not in self._handled_chaos_runs]
+            return new_runs
+        except Exception:
+            return []
 
-        # 1. OBSERVE — collect latest telemetry
+    async def _observe_and_detect(self):
+        """Observe → Detect anomalies. Create incident ONLY for new chaos runs."""
+
+        # 1. OBSERVE — collect latest telemetry (free, no API calls)
         telemetry = await observer.observe()
         if not telemetry:
             return
 
-        # 2. ORIENT — detect anomalies (statistical, no LLM)
+        # 2. DETECT — anomalies (statistical, no LLM)
         anomalies = await anomaly_detector.detect(telemetry)
+        if anomalies:
+            self._anomalies_detected += len(anomalies)
+
+        # 3. Check for NEW chaos runs we haven't handled yet
+        new_chaos_runs = await self._get_new_chaos_runs()
+        if not new_chaos_runs:
+            return  # No new chaos = do nothing
+
+        # Need at least some anomalies to justify an incident
         if not anomalies:
-            return
+            return  # Chaos just started, no anomalies yet — wait
 
-        self._anomalies_detected += len(anomalies)
-
-        # Only create incidents for critical/emergency anomalies or 3+ warnings
         critical_anomalies = [
             a for a in anomalies if a.severity in ("critical", "emergency")
         ]
-        if not critical_anomalies and len(anomalies) < 3:
-            return
 
         await agent_event_bus.publish("anomalies_detected", {
             "count": len(anomalies),
@@ -129,10 +172,13 @@ class NOCAgent:
             "types": list({a.anomaly_type for a in anomalies}),
         })
 
-        # 3. AUTO-CREATE INCIDENT (no Claude — just DB insert)
-        await self._auto_create_incident(anomalies, telemetry)
+        # 4. Create ONE incident for these new chaos runs, then mark them handled
+        for run in new_chaos_runs:
+            self._handled_chaos_runs.add(run.get("run_id"))
 
-        # 4. LEARN — update thresholds based on anomaly patterns
+        await self._create_incident_and_diagnose(anomalies, new_chaos_runs)
+
+        # 5. LEARN — update thresholds
         for anomaly in anomalies[:3]:
             await learner.learn(
                 incident_id=None,
@@ -143,10 +189,10 @@ class NOCAgent:
                 threshold_used=anomaly.threshold,
             )
 
-    async def _auto_create_incident(
-        self, anomalies: list[Anomaly], telemetry: dict
+    async def _create_incident_and_diagnose(
+        self, anomalies: list[Anomaly], chaos_runs: list[dict]
     ):
-        """Create an incident from anomalies without calling Claude."""
+        """Create ONE incident + ONE Claude call for new chaos run(s)."""
 
         # Determine severity from worst anomaly
         if any(a.severity == "emergency" for a in anomalies):
@@ -164,7 +210,7 @@ class NOCAgent:
             a.source_id for a in anomalies if a.source_type == "link"
         })
 
-        # Build a descriptive title from anomalies
+        # Build title
         anomaly_types = list({a.anomaly_type for a in anomalies})
         type_labels = {
             "link_down": "Link Down",
@@ -178,38 +224,21 @@ class NOCAgent:
             "bgp_flapping": "BGP Flapping",
         }
         type_desc = ", ".join(type_labels.get(t, t) for t in anomaly_types[:3])
-        sources = ", ".join(
-            a.source_id for a in anomalies[:3]
-        )
-        title = f"{severity.upper()}: {type_desc} — {sources}"
+        scenarios = ", ".join(r.get("scenario", "?") for r in chaos_runs[:2])
+        title = f"{severity.upper()}: {type_desc} [{scenarios}]"
 
-        # Build hypothesis from anomaly descriptions
         hypothesis = "; ".join(a.description for a in anomalies[:5])
 
-        # Deduplicate: check if a similar open incident already exists
-        async with async_session() as session:
-            result = await session.execute(
-                text(
-                    "SELECT id FROM incidents "
-                    "WHERE status NOT IN ('resolved') "
-                    "AND title = :title "
-                    "AND detected_at > NOW() - INTERVAL '5 minutes' "
-                    "LIMIT 1"
-                ),
-                {"title": title},
-            )
-            if result.fetchone():
-                return  # Already have this incident
-
-        # Insert in a separate session to avoid transaction nesting
+        # Insert incident
         async with async_session() as session:
             async with session.begin():
                 result = await session.execute(
                     text(
                         "INSERT INTO incidents (title, severity, status, "
-                        "affected_devices, affected_links, root_cause_hypothesis) "
+                        "affected_devices, affected_links, root_cause_hypothesis, metadata) "
                         "VALUES (:title, :severity, 'open', "
-                        ":affected_devices, :affected_links, :hypothesis) "
+                        ":affected_devices, :affected_links, :hypothesis, "
+                        "CAST(:metadata AS jsonb)) "
                         "RETURNING id"
                     ),
                     {
@@ -218,6 +247,9 @@ class NOCAgent:
                         "affected_devices": affected_devices or None,
                         "affected_links": affected_links or None,
                         "hypothesis": hypothesis,
+                        "metadata": json.dumps({
+                            "chaos_run_ids": [r.get("run_id") for r in chaos_runs],
+                        }),
                     },
                 )
                 incident_id = result.scalar_one()
@@ -231,28 +263,14 @@ class NOCAgent:
         })
 
         logger.info(
-            "auto_incident_created",
+            "incident_created",
             incident_id=incident_id,
             severity=severity,
-            anomaly_count=len(anomalies),
+            chaos_runs=[r.get("run_id") for r in chaos_runs],
         )
 
-        # Auto-diagnose with Claude (1 API call per new incident)
-        # This creates decision records that show in the Approval Panel
-        try:
-            from nocagent.core.reasoner import reasoner
-            result = await reasoner.diagnose_incident(incident_id)
-            logger.info(
-                "auto_diagnosis_complete",
-                incident_id=incident_id,
-                actions_proposed=result.get("actions_proposed", 0),
-            )
-        except Exception as exc:
-            logger.warning(
-                "auto_diagnosis_failed",
-                incident_id=incident_id,
-                error=str(exc),
-            )
+        # Diagnosis is triggered by the engineer via the Approval Panel
+        # (no automatic Claude call — human stays in the loop)
 
 
 # Singleton

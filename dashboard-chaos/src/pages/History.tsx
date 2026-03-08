@@ -14,6 +14,7 @@ import {
   Pause,
 } from 'lucide-react';
 import { chaosApi, agentApi, HistoryEntry, SCENARIOS, AgentIncident } from '../api/chaos';
+import { formatTimestamp } from '../utils/formatTimestamp';
 
 const History: React.FC = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -78,19 +79,6 @@ const History: React.FC = () => {
       return Math.round((Date.now() - start) / 1000);
     }
     return null;
-  };
-
-  const formatDate = (dateStr: string | null): string => {
-    if (!dateStr) return '--';
-    const d = new Date(dateStr);
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
   };
 
   const getStatusIcon = (status: string) => {
@@ -272,10 +260,10 @@ const History: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-noc-muted font-mono">
-                          {formatDate(entry.started_at)}
+                          {formatTimestamp(entry.started_at)}
                         </td>
                         <td className="px-4 py-3 text-sm text-noc-muted font-mono">
-                          {formatDate(entry.ended_at)}
+                          {formatTimestamp(entry.ended_at)}
                         </td>
                         <td className="px-4 py-3 text-sm font-mono text-cyan-400">
                           {formatDuration(computeDuration(entry))}
@@ -321,7 +309,7 @@ const History: React.FC = () => {
                                         </div>
                                         <div className="flex-1">
                                           <p className="text-xs font-semibold text-noc-text">Chaos Injected</p>
-                                          <p className="text-xs text-noc-muted font-mono">{formatDate(entry.started_at)}</p>
+                                          <p className="text-xs text-noc-muted font-mono">{formatTimestamp(entry.started_at)}</p>
                                         </div>
                                       </div>
 
@@ -347,7 +335,7 @@ const History: React.FC = () => {
                                             <p className="text-xs font-semibold text-noc-text capitalize">
                                               Scenario {entry.status}
                                             </p>
-                                            <p className="text-xs text-noc-muted font-mono">{formatDate(entry.ended_at)}</p>
+                                            <p className="text-xs text-noc-muted font-mono">{formatTimestamp(entry.ended_at)}</p>
                                           </div>
                                         </div>
                                       )}

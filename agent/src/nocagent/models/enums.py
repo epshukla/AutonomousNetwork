@@ -22,6 +22,15 @@ class DecisionStatus(StrEnum):
     REJECTED = "rejected"
     EXECUTED = "executed"
     FAILED = "failed"
+    LOGGED = "logged"       # Physical tasks — work orders for field team
+    IN_PROGRESS = "in_progress"  # Field team has started work
+    COMPLETED = "completed"      # Field team marked complete
+
+
+class ActionCategory(StrEnum):
+    SOFTWARE = "software"           # Can be executed via simulator API
+    PHYSICAL = "physical"           # Requires human physical intervention
+    INFORMATIONAL = "informational" # Alerts, escalations, queries
 
 
 class AgentMode(StrEnum):

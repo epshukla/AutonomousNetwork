@@ -23,7 +23,7 @@ class AgentSettings(BaseSettings):
 
     # Agent behavior
     agent_mode: str = "autonomous"  # autonomous | supervised | observe-only
-    observe_interval_seconds: int = 30
+    observe_interval_seconds: int = 5
 
     # Logging
     log_level: str = "INFO"

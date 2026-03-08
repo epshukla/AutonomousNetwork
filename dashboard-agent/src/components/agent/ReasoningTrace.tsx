@@ -1,155 +1,129 @@
-import { motion } from 'framer-motion';
-import { Brain, Wrench, Search, CheckCircle, XCircle, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Brain } from 'lucide-react';
 
 interface ReasoningTraceProps {
   trace: string;
   compact?: boolean;
+  title?: string;
 }
 
-export default function ReasoningTrace({ trace, compact = false }: ReasoningTraceProps) {
+/** Render inline formatting: **bold** and `code` */
+function renderInline(text: string): (JSX.Element | string)[] {
+  // Split on **bold** and `code` patterns
+  const tokens: (JSX.Element | string)[] = [];
+  const regex = /(\*\*(.+?)\*\*|`(.+?)`)/g;
+  let last = 0;
+  let match;
+  let i = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) tokens.push(text.slice(last, match.index));
+    if (match[2]) {
+      // bold
+      tokens.push(<strong key={i++} className="font-semibold text-noc-text">{match[2]}</strong>);
+    } else if (match[3]) {
+      // inline code
+      tokens.push(
+        <code key={i++} className="text-xs font-mono text-noc-cyan bg-noc-cyan/10 px-1 py-0.5 rounded">
+          {match[3]}
+        </code>
+      );
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) tokens.push(text.slice(last));
+  return tokens;
+}
+
+export default function ReasoningTrace({ trace, compact = false, title }: ReasoningTraceProps) {
   const renderMarkdown = (text: string) => {
-    const lines = text.split('\n');
+    // Extract fenced code blocks first
+    const segments: { type: 'text' | 'code'; content: string; lang?: string }[] = [];
+    const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match;
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      if (match.index > lastIndex)
+        segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+      segments.push({ type: 'code', content: match[2], lang: match[1] || 'text' });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length)
+      segments.push({ type: 'text', content: text.slice(lastIndex) });
+
     const elements: JSX.Element[] = [];
+    let key = 0;
 
-    lines.forEach((line, index) => {
-      const trimmed = line.trim();
-
-      // Headers
-      if (trimmed.startsWith('## ')) {
+    for (const segment of segments) {
+      if (segment.type === 'code') {
         elements.push(
-          <motion.h3
-            key={index}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.03 }}
-            className="text-base font-bold text-noc-cyan mt-4 mb-2 flex items-center gap-2"
-          >
-            <Brain className="w-4 h-4" />
-            {trimmed.slice(3)}
-          </motion.h3>
-        );
-        return;
-      }
-
-      if (trimmed.startsWith('### ')) {
-        elements.push(
-          <motion.h4
-            key={index}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.03 }}
-            className="text-sm font-semibold text-noc-amber mt-3 mb-1.5 flex items-center gap-2"
-          >
-            <Wrench className="w-3.5 h-3.5" />
-            {trimmed.slice(4)}
-          </motion.h4>
-        );
-        return;
-      }
-
-      // Numbered list items (analysis steps)
-      const numberedMatch = trimmed.match(/^(\d+)\.\s+\*\*(.+?)\*\*:?\s*(.*)/);
-      if (numberedMatch) {
-        const [, num, title, desc] = numberedMatch;
-        elements.push(
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="flex items-start gap-3 py-1.5 pl-2"
-          >
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-noc-cyan/15 border border-noc-cyan/30 flex items-center justify-center mt-0.5">
-              <span className="text-xs font-bold text-noc-cyan">{num}</span>
+          <div key={key++} className="my-3">
+            <div className="px-3 py-1.5 bg-noc-surface/80 border border-noc-border/30 border-b-0 rounded-t-lg">
+              <span className="text-[10px] font-mono font-bold text-noc-muted uppercase">{segment.lang}</span>
             </div>
-            <div>
-              <span className="text-sm font-semibold text-noc-text">{title}</span>
-              {desc && <span className="text-sm text-noc-muted">: {desc}</span>}
+            <pre className="p-4 bg-noc-bg/80 border border-noc-border/30 rounded-b-lg text-xs text-noc-text font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
+              {segment.content.trim()}
+            </pre>
+          </div>
+        );
+        continue;
+      }
+
+      const lines = segment.content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // ## Header
+        if (trimmed.startsWith('## ')) {
+          elements.push(
+            <h3 key={key++} className="text-[15px] font-bold text-noc-text mt-5 mb-2 pb-1 border-b border-noc-border/20">
+              {trimmed.slice(3)}
+            </h3>
+          );
+          continue;
+        }
+
+        // ### Sub-header
+        if (trimmed.startsWith('### ')) {
+          elements.push(
+            <h4 key={key++} className="text-sm font-bold text-noc-text mt-4 mb-1.5">
+              {trimmed.slice(4)}
+            </h4>
+          );
+          continue;
+        }
+
+        // Numbered list: "1. **Title**: description"
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
+        if (numMatch) {
+          elements.push(
+            <div key={key++} className="flex items-start gap-2 py-0.5 pl-2">
+              <span className="text-sm font-mono text-noc-muted flex-shrink-0 w-5 text-right">{numMatch[1]}.</span>
+              <span className="text-sm text-noc-muted leading-relaxed">{renderInline(numMatch[2])}</span>
             </div>
-          </motion.div>
-        );
-        return;
-      }
+          );
+          continue;
+        }
 
-      // Tool calls (backtick code)
-      const toolCallMatch = trimmed.match(/^-\s+`(.+?)`\s*-?\s*(.*)/);
-      if (toolCallMatch) {
-        const [, call, desc] = toolCallMatch;
-        elements.push(
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="flex items-start gap-2 py-1 pl-4 ml-2 border-l-2 border-noc-purple/30"
-          >
-            <Search className="w-3.5 h-3.5 text-noc-purple mt-0.5 flex-shrink-0" />
-            <div>
-              <code className="text-xs font-mono text-noc-purple bg-noc-purple/10 px-1.5 py-0.5 rounded">
-                {call}
-              </code>
-              {desc && <span className="text-xs text-noc-muted ml-2">{desc}</span>}
+        // Bullet with indent: "  - sub item"
+        if (trimmed.startsWith('- ')) {
+          const depth = line.search(/\S/) >= 4 ? 'pl-8' : 'pl-4';
+          elements.push(
+            <div key={key++} className={`flex items-start gap-2 py-0.5 ${depth}`}>
+              <span className="text-noc-muted mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-noc-muted/50" />
+              <span className="text-sm text-noc-muted leading-relaxed">{renderInline(trimmed.slice(2))}</span>
             </div>
-          </motion.div>
-        );
-        return;
-      }
+          );
+          continue;
+        }
 
-      // Regular bullet points
-      if (trimmed.startsWith('- ')) {
-        const content = trimmed.slice(2);
-        // Parse bold within bullet
-        const parts = content.split(/\*\*(.+?)\*\*/g);
+        // Regular paragraph
         elements.push(
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.03 }}
-            className="flex items-start gap-2 py-0.5 pl-4"
-          >
-            <ChevronRight className="w-3 h-3 text-noc-cyan mt-1 flex-shrink-0" />
-            <span className="text-sm text-noc-muted">
-              {parts.map((part, pi) =>
-                pi % 2 === 1 ? (
-                  <span key={pi} className="font-semibold text-noc-text">
-                    {part}
-                  </span>
-                ) : (
-                  <span key={pi}>{part}</span>
-                )
-              )}
-            </span>
-          </motion.div>
-        );
-        return;
-      }
-
-      // Regular text
-      if (trimmed) {
-        // Parse bold
-        const parts = trimmed.split(/\*\*(.+?)\*\*/g);
-        elements.push(
-          <motion.p
-            key={index}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: index * 0.02 }}
-            className="text-sm text-noc-muted py-0.5"
-          >
-            {parts.map((part, pi) =>
-              pi % 2 === 1 ? (
-                <span key={pi} className="font-semibold text-noc-text">
-                  {part}
-                </span>
-              ) : (
-                <span key={pi}>{part}</span>
-              )
-            )}
-          </motion.p>
+          <p key={key++} className="text-sm text-noc-muted leading-relaxed py-0.5">
+            {renderInline(trimmed)}
+          </p>
         );
       }
-    });
+    }
 
     return elements;
   };
@@ -157,16 +131,16 @@ export default function ReasoningTrace({ trace, compact = false }: ReasoningTrac
   return (
     <div
       className={`bg-noc-bg/60 rounded-lg border border-noc-border/30 ${
-        compact ? 'p-3 max-h-48 overflow-y-auto' : 'p-5 max-h-[500px] overflow-y-auto'
+        compact ? 'p-3 max-h-48 overflow-y-auto' : 'p-5 overflow-y-auto'
       }`}
     >
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-noc-border/30">
         <Brain className="w-4 h-4 text-noc-cyan" />
         <span className="text-xs font-bold uppercase tracking-widest text-noc-cyan">
-          Claude's Reasoning Trace
+          {title || "AI Diagnosis"}
         </span>
       </div>
-      <div className="space-y-0.5">{renderMarkdown(trace)}</div>
+      <div>{renderMarkdown(trace)}</div>
     </div>
   );
 }

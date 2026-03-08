@@ -29,6 +29,7 @@ class Decision(Base):
     outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
     outcome_success: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     blast_radius_estimate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    category: Mapped[str] = mapped_column(String, nullable=False, server_default="software")
 
 
 class LearningRecord(Base):

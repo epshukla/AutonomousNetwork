@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, Timer, Square, AlertTriangle, Crosshair, ChevronDown } from 'lucide-react';
@@ -22,18 +22,21 @@ const LaunchPad: React.FC = () => {
     [selectedId]
   );
 
-  // Update elapsed timers every second
+  // Update elapsed timers every second (ref avoids interval recreation on poll)
+  const activeScenariosRef = useRef(activeScenarios);
+  activeScenariosRef.current = activeScenarios;
+
   useEffect(() => {
     const interval = setInterval(() => {
       const timers: Record<string, number> = {};
-      activeScenarios.forEach((s) => {
+      activeScenariosRef.current.forEach((s) => {
         const startTime = new Date(s.started_at).getTime();
         timers[s.scenario_name] = Math.floor((Date.now() - startTime) / 1000);
       });
       setElapsedTimers(timers);
     }, 1000);
     return () => clearInterval(interval);
-  }, [activeScenarios]);
+  }, []);
 
   const handleLaunch = async (scenarioType: string, parameters: any) => {
     setIsLaunching(true);
@@ -229,8 +232,8 @@ const LaunchPad: React.FC = () => {
               const meta = SCENARIOS.find((s) => s.name === scenario.scenario_name);
               const elapsed = elapsedTimers[scenario.scenario_name] || 0;
               const params = scenario.params || {};
-              const duration = (params.duration_seconds as number) || 300;
-              const progress = Math.min((elapsed / duration) * 100, 100);
+              const duration = params.duration_seconds as number | undefined;
+              const progress = duration ? Math.min((elapsed / duration) * 100, 100) : null;
 
               return (
                 <motion.div
@@ -252,14 +255,22 @@ const LaunchPad: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="w-full h-1.5 bg-noc-bg rounded-full mb-3 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-red-400 to-amber-400"
-                      style={{ width: `${progress}%` }}
-                      transition={{ duration: 1 }}
-                    />
-                  </div>
+                  {/* Progress bar or running indicator */}
+                  {progress !== null ? (
+                    <div className="w-full h-1.5 bg-noc-bg rounded-full mb-3 overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-r from-red-400 to-amber-400"
+                        style={{ width: `${progress}%` }}
+                        transition={{ duration: 1 }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-1.5 bg-noc-bg rounded-full mb-3 overflow-hidden">
+                      <div
+                        className="h-full w-1/3 rounded-full bg-gradient-to-r from-red-400 to-amber-400 animate-pulse"
+                      />
+                    </div>
+                  )}
 
                   {/* Params summary */}
                   <div className="text-xs text-noc-muted font-mono mb-3 space-y-0.5">

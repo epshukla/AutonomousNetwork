@@ -42,6 +42,84 @@ async def list_incidents(limit: int = 50, status: str | None = None):
         ]
 
 
+@router.get("/incidents/active")
+async def active_incidents():
+    """Return all non-resolved incidents with their decisions (for Approval Panel)."""
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                "SELECT id, title, severity, status, detected_at, resolved_at, "
+                "affected_devices, affected_links, root_cause_hypothesis, "
+                "estimated_customer_impact, final_root_cause, claude_reasoning "
+                "FROM incidents "
+                "WHERE status != 'resolved' "
+                "ORDER BY detected_at DESC"
+            )
+        )
+        incidents = result.fetchall()
+        if not incidents:
+            return []
+
+        # Build incidents list and collect IDs for decisions query
+        incident_dicts = []
+        ids_params = {}
+        for idx, r in enumerate(incidents):
+            ids_params[f"id_{idx}"] = r.id
+            incident_dicts.append({
+                "id": r.id,
+                "title": r.title,
+                "severity": r.severity,
+                "status": r.status,
+                "detected_at": r.detected_at.isoformat() if r.detected_at else None,
+                "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
+                "affected_devices": r.affected_devices,
+                "affected_links": r.affected_links,
+                "root_cause_hypothesis": r.root_cause_hypothesis,
+                "estimated_customer_impact": r.estimated_customer_impact,
+                "final_root_cause": r.final_root_cause,
+                "claude_reasoning": r.claude_reasoning,
+                "decisions": [],
+            })
+
+        # Get all decisions for these incidents in one query
+        placeholders = ", ".join(f":id_{i}" for i in range(len(incidents)))
+        decisions_result = await session.execute(
+            text(
+                f"SELECT id, incident_id, action_type, autonomy_tier, confidence, "
+                f"reasoning, parameters, status, created_at, executed_at, "
+                f"outcome, outcome_success, blast_radius_estimate, category "
+                f"FROM decisions WHERE incident_id IN ({placeholders}) "
+                f"ORDER BY created_at"
+            ),
+            ids_params,
+        )
+
+        # Group decisions by incident_id
+        decisions_by_incident: dict[int, list] = {}
+        for d in decisions_result.fetchall():
+            decisions_by_incident.setdefault(d.incident_id, []).append({
+                "id": d.id,
+                "incident_id": d.incident_id,
+                "action_type": d.action_type,
+                "autonomy_tier": d.autonomy_tier,
+                "confidence": d.confidence,
+                "reasoning": d.reasoning,
+                "parameters": d.parameters,
+                "status": d.status,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+                "executed_at": d.executed_at.isoformat() if d.executed_at else None,
+                "outcome": d.outcome,
+                "outcome_success": d.outcome_success,
+                "blast_radius_estimate": d.blast_radius_estimate,
+                "category": d.category,
+            })
+
+        for inc in incident_dicts:
+            inc["decisions"] = decisions_by_incident.get(inc["id"], [])
+
+        return incident_dicts
+
+
 @router.get("/incidents/{incident_id}")
 async def get_incident(incident_id: int):
     async with async_session() as session:
@@ -153,3 +231,18 @@ async def reject_incident_action(incident_id: int):
         await decision_engine.reject_decision(decision.id)
 
     return {"incident_id": incident_id, "rejected_count": len(pending)}
+
+
+@router.post("/incidents/{incident_id}/resolve")
+async def resolve_incident(incident_id: int):
+    """Mark an incident as resolved (engineer confirms fix is in place)."""
+    async with async_session() as session:
+        async with session.begin():
+            await session.execute(
+                text(
+                    "UPDATE incidents SET status = 'resolved', "
+                    "resolved_at = NOW() WHERE id = :id"
+                ),
+                {"id": incident_id},
+            )
+    return {"incident_id": incident_id, "status": "resolved"}

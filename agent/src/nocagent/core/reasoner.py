@@ -56,9 +56,11 @@ IMPORTANT: Return your response in this EXACT format:
 ```json
 [
   {
-    "action_type": "apply_rate_limit|execute_reroute|restart_device|escalate_to_engineer",
+    "action_type": "apply_rate_limit|execute_reroute|restart_device|escalate_to_engineer|replace_hardware|dispatch_field_tech|resplice_fiber",
+    "description": "<Human-readable title, e.g. 'Reroute Delhi-Mumbai traffic to backup link'>",
     "parameters": { <action-specific params> },
     "reasoning": "<why this action>",
+    "expected_result": "<What will happen after this fix, e.g. 'Latency increase ~2ms but service restored for ~200K customers'>",
     "confidence": <0.0-1.0>,
     "blast_radius": <estimated affected customers as integer>
   }
@@ -70,6 +72,15 @@ Parameter schemas:
 - execute_reroute: {"from_link": "<link_id>", "to_link": "<link_id>", "reason": "<text>"}
 - restart_device: {"device_id": "<id>", "reason": "<text>", "graceful": true}
 - escalate_to_engineer: {"urgency": "low|medium|high|critical", "context": "<text>", "recommended_action": "<text>"}
+
+Physical actions (logged as work orders for ISP field team — NOT executed by AI):
+- replace_hardware: {"device_id": "<id>", "component": "sfp|linecard|psu|fan", "reason": "<text>"}
+- dispatch_field_tech: {"location": "<city/site>", "task": "<description>", "urgency": "low|medium|high|critical"}
+- resplice_fiber: {"link_id": "<id>", "location": "<description>", "reason": "<text>"}
+
+IMPORTANT: If the root cause requires physical intervention (broken fiber, failed hardware),
+recommend BOTH a software mitigation (reroute/rate-limit to stabilize) AND a physical action
+for the field team. The software fix is temporary; the physical fix is the permanent solution.
 
 Be concise, precise, and data-driven."""
 
@@ -122,11 +133,17 @@ class Reasoner:
         actions = self._parse_actions(assistant_message)
         decision_ids = []
         for action in actions:
+            params = dict(action.get("parameters", {}))
+            if action.get("description"):
+                params["_description"] = action["description"]
+            if action.get("expected_result"):
+                params["_expected_result"] = action["expected_result"]
+
             decision = await decision_engine.create_decision(
                 incident_id=incident_id,
                 action_type=action["action_type"],
                 reasoning=action.get("reasoning", ""),
-                parameters=action.get("parameters", {}),
+                parameters=params,
                 confidence=action.get("confidence", 0.7),
                 blast_radius=action.get("blast_radius", 0),
             )
@@ -368,7 +385,7 @@ Analyze this incident. Identify the root cause, estimate customer impact, and re
                         "UPDATE incidents SET "
                         "claude_reasoning = :diagnosis, "
                         "status = CASE WHEN status = 'open' THEN 'analyzing' ELSE status END, "
-                        "metadata = CAST(:metadata AS jsonb) "
+                        "metadata = COALESCE(metadata, '{}') || CAST(:metadata AS jsonb) "
                         "WHERE id = :id"
                     ),
                     {
