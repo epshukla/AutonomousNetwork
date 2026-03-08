@@ -224,7 +224,7 @@ export default function Metrics() {
                   style={{ backgroundColor: entry.color }}
                 />
                 <span className="text-noc-muted">
-                  {(entry.dataKey as string).replace('lat_', '').replace('pkt_', '')}
+                  {((entry.dataKey as string) || '').replace('lat_', '').replace('pkt_', '')}
                 </span>
               </button>
             );

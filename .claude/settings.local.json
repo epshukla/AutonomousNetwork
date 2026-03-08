@@ -262,7 +262,11 @@
       "Bash(curl -s localhost:8000/api/v1/chaos/scenarios | python3 -c \"import json,sys; [print\\(s['name']\\) for s in json.load\\(sys.stdin\\)]\")",
       "Bash(curl -s -X POST localhost:8000/api/v1/chaos/scenarios/fiber_cut/start | python3 -m json.tool)",
       "Bash(sleep 3 && curl -s localhost:8000/api/v1/compliance/status | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'Overall: {d[\\\\\"overall_status\\\\\"]}, NTP: {d[\\\\\"ntp_synced\\\\\"]}'\\); [print\\(f'  {b[\\\\\"name\\\\\"]}: {b[\\\\\"status\\\\\"]}'\\) for b in d['bodies']]\")",
-      "Bash(curl -s -X POST localhost:8000/api/v1/chaos/scenarios/fiber_cut/stop | python3 -m json.tool)"
+      "Bash(curl -s -X POST localhost:8000/api/v1/chaos/scenarios/fiber_cut/stop | python3 -m json.tool)",
+      "Bash(docker compose logs dashboard-network 2>&1 | tail -20)",
+      "Bash(cd /home/theperson/Vajra/MyProjects/C26_Round2/AutonomousNetwork/dashboard-network && npm install 2>&1 | tail -5 && npx vite build 2>&1 | tail -20NEW INCIDENT — AWAITING AI ANALYSIS)",
+      "Bash(npx vite build 2>&1 | tail -10)",
+      "Bash(docker compose build dashboard-network 2>&1 | tail -10 && docker compose up -d dashboard-network 2>&1)"
     ]
   }
 }

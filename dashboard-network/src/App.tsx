@@ -18,6 +18,7 @@ import {
   ScrollText,
 } from 'lucide-react';
 
+import ErrorBoundary from './components/ErrorBoundary';
 import Overview from './pages/Overview';
 import Topology from './pages/Topology';
 import Devices from './pages/Devices';
@@ -160,30 +161,32 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="h-full"
-          >
-            <Routes location={location}>
-              <Route path="/" element={<Overview />} />
-              <Route path="/topology" element={<Topology />} />
-              <Route path="/devices" element={<Devices />} />
-              <Route path="/interfaces" element={<Interfaces />} />
-              <Route path="/routing" element={<Routing />} />
-              <Route path="/traffic" element={<Traffic />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/metrics" element={<Metrics />} />
-              <Route path="/compliance" element={<Compliance />} />
-              <Route path="/subscribers" element={<SubscriberLogs />} />
-              <Route path="/audit" element={<AuditTrail />} />
-            </Routes>
-          </motion.div>
-        </AnimatePresence>
+        <ErrorBoundary>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="h-full"
+            >
+              <Routes location={location}>
+                <Route path="/" element={<Overview />} />
+                <Route path="/topology" element={<Topology />} />
+                <Route path="/devices" element={<Devices />} />
+                <Route path="/interfaces" element={<Interfaces />} />
+                <Route path="/routing" element={<Routing />} />
+                <Route path="/traffic" element={<Traffic />} />
+                <Route path="/alerts" element={<Alerts />} />
+                <Route path="/metrics" element={<Metrics />} />
+                <Route path="/compliance" element={<Compliance />} />
+                <Route path="/subscribers" element={<SubscriberLogs />} />
+                <Route path="/audit" element={<AuditTrail />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
+        </ErrorBoundary>
       </main>
     </div>
   );

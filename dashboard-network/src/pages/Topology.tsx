@@ -273,25 +273,25 @@ function DetailPanel({ type, data, onClose }: DetailPanelProps) {
               <MetricRow
                 icon={<Cpu className="w-4 h-4 text-noc-cyan" />}
                 label="CPU Usage"
-                value={`${d.cpu_usage?.toFixed(1)}%`}
-                bar={d.cpu_usage}
+                value={`${(d.cpu_usage ?? 0).toFixed(1)}%`}
+                bar={d.cpu_usage || 0}
                 barColor={
-                  d.cpu_usage > 90 ? 'bg-noc-red' : d.cpu_usage > 70 ? 'bg-noc-amber' : 'bg-noc-cyan'
+                  (d.cpu_usage || 0) > 90 ? 'bg-noc-red' : (d.cpu_usage || 0) > 70 ? 'bg-noc-amber' : 'bg-noc-cyan'
                 }
               />
               <MetricRow
                 icon={<HardDrive className="w-4 h-4 text-noc-purple" />}
                 label="Memory"
-                value={`${d.memory_usage?.toFixed(1)}%`}
-                bar={d.memory_usage}
+                value={`${(d.memory_usage ?? 0).toFixed(1)}%`}
+                bar={d.memory_usage || 0}
                 barColor={
-                  d.memory_usage > 90 ? 'bg-noc-red' : d.memory_usage > 70 ? 'bg-noc-amber' : 'bg-noc-purple'
+                  (d.memory_usage || 0) > 90 ? 'bg-noc-red' : (d.memory_usage || 0) > 70 ? 'bg-noc-amber' : 'bg-noc-purple'
                 }
               />
               <MetricRow
                 icon={<Thermometer className="w-4 h-4 text-noc-amber" />}
                 label="Temperature"
-                value={`${d.temperature?.toFixed(0)} C`}
+                value={`${(d.temperature ?? 0).toFixed(0)} C`}
               />
               <div className="glass-card p-3 text-xs text-noc-muted">
                 <div className="flex justify-between mb-1">
@@ -311,31 +311,31 @@ function DetailPanel({ type, data, onClose }: DetailPanelProps) {
               <MetricRow
                 icon={<Activity className="w-4 h-4 text-noc-cyan" />}
                 label="Utilization"
-                value={`${d.utilization?.toFixed(1)}%`}
-                bar={d.utilization}
+                value={`${(d.utilization ?? 0).toFixed(1)}%`}
+                bar={d.utilization || 0}
                 barColor={
-                  d.utilization > 90 ? 'bg-noc-red' : d.utilization > 70 ? 'bg-noc-amber' : 'bg-noc-cyan'
+                  (d.utilization || 0) > 90 ? 'bg-noc-red' : (d.utilization || 0) > 70 ? 'bg-noc-amber' : 'bg-noc-cyan'
                 }
               />
               <MetricRow
                 icon={<Clock className="w-4 h-4 text-noc-amber" />}
                 label="Latency"
-                value={`${d.latency_ms?.toFixed(2)} ms`}
+                value={`${(d.latency_ms ?? 0).toFixed(2)} ms`}
               />
               <MetricRow
                 icon={<AlertTriangle className="w-4 h-4 text-noc-red" />}
                 label="Packet Loss"
-                value={`${d.packet_loss?.toFixed(3)}%`}
+                value={`${(d.packet_loss ?? 0).toFixed(3)}%`}
               />
               <MetricRow
                 icon={<Gauge className="w-4 h-4 text-noc-green" />}
                 label="Throughput"
-                value={`${d.throughput_gbps?.toFixed(2)} Gbps`}
+                value={`${(d.throughput_gbps ?? 0).toFixed(2)} Gbps`}
               />
               <div className="glass-card p-3 text-xs text-noc-muted">
                 <div className="flex justify-between mb-1">
                   <span>Bandwidth</span>
-                  <span className="text-noc-text">{d.bandwidth_gbps} Gbps</span>
+                  <span className="text-noc-text">{d.bandwidth_gbps || 0} Gbps</span>
                 </div>
                 <div className="flex justify-between mb-1">
                   <span>Source</span>

@@ -91,7 +91,7 @@ const columns: ColumnDef[] = [
       const pct = r.utilization_percent;
       const color =
         pct > 90 ? 'text-noc-red' : pct >= 70 ? 'text-noc-amber' : 'text-noc-green';
-      return <span className={`font-bold ${color}`}>{pct.toFixed(1)}%</span>;
+      return <span className={`font-bold ${color}`}>{(pct || 0).toFixed(1)}%</span>;
     },
     sortValue: (r) => r.utilization_percent,
   },
@@ -117,7 +117,7 @@ const columns: ColumnDef[] = [
     mono: true,
     align: 'right',
     render: (r) => {
-      const total = r.in_errors + r.out_errors;
+      const total = (r.in_errors || 0) + (r.out_errors || 0);
       const color = total > 0 ? 'text-noc-red' : 'text-noc-muted';
       return (
         <span className={color}>
@@ -125,7 +125,7 @@ const columns: ColumnDef[] = [
         </span>
       );
     },
-    sortValue: (r) => r.in_errors + r.out_errors,
+    sortValue: (r) => (r.in_errors || 0) + (r.out_errors || 0),
   },
   {
     key: 'status',
@@ -440,13 +440,13 @@ export default function Interfaces() {
                 Errors:{' '}
                 <span
                   className={`font-bold ${
-                    interfaces.reduce((s, i) => s + i.in_errors + i.out_errors, 0) > 0
+                    interfaces.reduce((s, i) => s + (i.in_errors || 0) + (i.out_errors || 0), 0) > 0
                       ? 'text-noc-red'
                       : 'text-noc-muted'
                   }`}
                 >
                   {interfaces
-                    .reduce((s, i) => s + i.in_errors + i.out_errors, 0)
+                    .reduce((s, i) => s + (i.in_errors || 0) + (i.out_errors || 0), 0)
                     .toLocaleString()}
                 </span>
               </span>

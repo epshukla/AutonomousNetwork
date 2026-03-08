@@ -51,7 +51,7 @@ function PieTooltip({ active, payload }: any) {
     <div className="glass-card p-3 border border-noc-border/50 shadow-noc-glow-lg min-w-[120px]">
       <p className="text-xs text-noc-muted mb-1">{entry.name}</p>
       <p className="text-sm font-bold font-mono" style={{ color: entry.payload.fill }}>
-        {(entry.value as number).toFixed(2)} Gbps
+        {(Number(entry.value) || 0).toFixed(2)} Gbps
       </p>
       <p className="text-[10px] text-noc-muted">
         {((entry.payload.percent || 0) * 100).toFixed(1)}%
@@ -66,7 +66,7 @@ function BarTooltip({ active, payload, label }: any) {
     <div className="glass-card p-3 border border-noc-border/50 shadow-noc-glow-lg min-w-[120px]">
       <p className="text-xs text-noc-muted mb-1">{label}</p>
       <p className="text-sm font-bold font-mono text-noc-cyan">
-        {(payload[0].value as number).toFixed(2)} Gbps
+        {(Number(payload[0].value) || 0).toFixed(2)} Gbps
       </p>
     </div>
   );
@@ -323,7 +323,7 @@ export default function Traffic() {
                   {entry.name}
                 </span>
                 <span className="text-xs font-bold font-mono text-noc-text">
-                  {entry.value.toFixed(1)}
+                  {(entry.value || 0).toFixed(1)}
                 </span>
               </div>
             ))}
@@ -464,7 +464,7 @@ export default function Traffic() {
                     </td>
                     <td className="py-2.5 px-3 text-right">
                       <span className="font-mono font-bold text-noc-cyan">
-                        {link.throughput_gbps.toFixed(2)}
+                        {(link.throughput_gbps || 0).toFixed(2)}
                       </span>
                       <span className="text-noc-muted text-xs ml-1">Gbps</span>
                     </td>
@@ -483,7 +483,7 @@ export default function Traffic() {
                               : '#00ff88',
                         }}
                       >
-                        {link.utilization_percent.toFixed(1)}%
+                        {(link.utilization_percent || 0).toFixed(1)}%
                       </span>
                     </td>
                   </motion.tr>

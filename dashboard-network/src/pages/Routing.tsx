@@ -211,7 +211,7 @@ export default function Routing() {
         const aOrder = order[(a.status || '').toLowerCase()] ?? 4;
         const bOrder = order[(b.status || '').toLowerCase()] ?? 4;
         if (aOrder !== bOrder) return aOrder - bOrder;
-        return a.peer_name.localeCompare(b.peer_name);
+        return (a.peer_name || '').localeCompare(b.peer_name || '');
       });
   }, [topology]);
 

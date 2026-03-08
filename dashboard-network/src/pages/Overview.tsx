@@ -369,7 +369,7 @@ export default function Overview() {
         <div className="col-span-8 grid grid-cols-2 gap-4">
           <MetricCard
             label="Total Throughput"
-            value={currentStats.totalThroughput.toFixed(1)}
+            value={(currentStats.totalThroughput || 0).toFixed(1)}
             unit="Gbps"
             color="cyan"
             icon={<Zap className="w-4 h-4" />}
@@ -379,7 +379,7 @@ export default function Overview() {
           />
           <MetricCard
             label="Avg Latency"
-            value={currentStats.avgLatency.toFixed(1)}
+            value={(currentStats.avgLatency || 0).toFixed(1)}
             unit="ms"
             color="amber"
             icon={<Clock className="w-4 h-4" />}
@@ -389,7 +389,7 @@ export default function Overview() {
           />
           <MetricCard
             label="Avg Utilization"
-            value={currentStats.avgUtilization.toFixed(1)}
+            value={(currentStats.avgUtilization || 0).toFixed(1)}
             unit="%"
             color="green"
             icon={<Activity className="w-4 h-4" />}
@@ -456,15 +456,15 @@ export default function Overview() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-[10px] text-noc-muted">Util</p>
-                    <p className="text-sm font-mono font-bold text-noc-cyan">{l.utilization_percent.toFixed(1)}%</p>
+                    <p className="text-sm font-mono font-bold text-noc-cyan">{(l.utilization_percent || 0).toFixed(1)}%</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-noc-muted">Latency</p>
-                    <p className="text-sm font-mono font-bold text-noc-amber">{l.latency_ms.toFixed(1)} ms</p>
+                    <p className="text-sm font-mono font-bold text-noc-amber">{(l.latency_ms || 0).toFixed(1)} ms</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-noc-muted">Throughput</p>
-                    <p className="text-sm font-mono font-bold text-noc-green">{l.throughput_gbps.toFixed(1)} G</p>
+                    <p className="text-sm font-mono font-bold text-noc-green">{(l.throughput_gbps || 0).toFixed(1)} G</p>
                   </div>
                 </div>
                 <div className="mt-2 h-1.5 bg-noc-bg/80 rounded-full overflow-hidden">
@@ -488,7 +488,7 @@ export default function Overview() {
             const cityDevices = devices.filter((d) => d.city === city);
             const healthyCount = cityDevices.filter((d) => d.status === 'healthy').length;
             const avgCpu = cityDevices.length > 0
-              ? cityDevices.reduce((s, d) => s + d.cpu_utilization, 0) / cityDevices.length
+              ? cityDevices.reduce((s, d) => s + (d.cpu_utilization || 0), 0) / cityDevices.length
               : 0;
             const totalSubs = cityDevices.reduce((s, d) => s + (d.subscribers || 0), 0);
             const peeringDevice = cityDevices.find((d) => d.type === 'peering_router');
@@ -548,7 +548,7 @@ export default function Overview() {
               </span>
             </div>
             <span className="text-lg font-bold text-noc-purple">
-              {currentStats.avgCpu.toFixed(1)}%
+              {(currentStats.avgCpu || 0).toFixed(1)}%
             </span>
           </div>
           <div className="h-24">
@@ -588,7 +588,7 @@ export default function Overview() {
               </span>
             </div>
             <span className="text-lg font-bold glow-text-cyan">
-              {currentStats.totalThroughput.toFixed(1)} Gbps
+              {(currentStats.totalThroughput || 0).toFixed(1)} Gbps
             </span>
           </div>
           <div className="h-24">
