@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
 
+import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import text
 
@@ -134,6 +135,58 @@ async def get_link_telemetry(
             }
             for row in rows
         ],
+    }
+
+
+@router.get("/traffic-analytics")
+async def get_traffic_analytics():
+    """Simulated NetFlow-style traffic analytics."""
+    links = await network_state.get_all_links()
+    total_throughput = sum(l.throughput_gbps for l in links.values())
+
+    # Protocol split with slight noise
+    protocol_base = {
+        "HTTPS": 0.62,
+        "HTTP": 0.12,
+        "DNS": 0.085,
+        "SSH": 0.032,
+        "Other": 0.143,
+    }
+    protocols = {}
+    for proto, ratio in protocol_base.items():
+        noisy_ratio = ratio + np.random.normal(0, 0.005)
+        protocols[proto] = round(total_throughput * max(0, noisy_ratio), 3)
+
+    # Top destinations scaled by actual total traffic
+    dest_base = {
+        "Google": 0.28,
+        "Cloudflare": 0.18,
+        "Amazon": 0.15,
+        "Microsoft": 0.12,
+        "Meta": 0.10,
+        "Other": 0.17,
+    }
+    destinations = {}
+    for dest, ratio in dest_base.items():
+        noisy_ratio = ratio + np.random.normal(0, 0.008)
+        destinations[dest] = round(total_throughput * max(0, noisy_ratio), 3)
+
+    # Per-link breakdown
+    link_traffic = []
+    for link in links.values():
+        link_traffic.append({
+            "link_id": link.link_id,
+            "type": link.link_type,
+            "throughput_gbps": round(link.throughput_gbps, 3),
+            "utilization_percent": round(link.utilization_percent, 2),
+        })
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "total_traffic_gbps": round(total_throughput, 3),
+        "protocol_breakdown_gbps": protocols,
+        "destination_breakdown_gbps": destinations,
+        "link_traffic": sorted(link_traffic, key=lambda x: x["throughput_gbps"], reverse=True),
     }
 
 

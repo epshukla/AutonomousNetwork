@@ -26,6 +26,8 @@ class DeviceType(StrEnum):
     CORE_ROUTER = "core_router"
     EDGE_ROUTER = "edge_router"
     PEERING_ROUTER = "peering_router"
+    AGGREGATION_ROUTER = "aggregation_router"
+    OLT = "olt"
 
 
 class LinkType(StrEnum):
@@ -33,6 +35,7 @@ class LinkType(StrEnum):
     FIBER_INTRA = "fiber_intra"
     FIBER_METRO = "fiber_metro"
     PEERING = "peering"
+    FIBER_ACCESS = "fiber_access"
 
 
 class EventSeverity(StrEnum):

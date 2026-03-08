@@ -554,6 +554,83 @@ export async function getLearningRecords(): Promise<LearningRecord[]> {
   }
 }
 
+// ============ Telemetry Types & Functions ============
+
+export interface DeviceTelemetryPoint {
+  time: string;
+  cpu_utilization: number | null;
+  memory_utilization: number | null;
+  temperature_celsius: number | null;
+  status: string;
+}
+
+export interface LinkTelemetryPoint {
+  time: string;
+  utilization_percent: number | null;
+  throughput_gbps: number | null;
+  latency_ms: number | null;
+  packet_loss_percent: number | null;
+  status: string;
+}
+
+export interface TopologyDevice {
+  device_id: string;
+  type: string;
+  city: string;
+  status: string;
+  cpu_utilization: number;
+  memory_utilization: number;
+  temperature_celsius: number;
+}
+
+export interface TopologyLink {
+  link_id: string;
+  from: string;
+  to: string;
+  type: string;
+  status: string;
+  capacity_gbps: number;
+  utilization_percent: number;
+  latency_ms: number;
+  packet_loss_percent: number;
+  throughput_gbps: number;
+}
+
+export async function getDeviceTelemetry(
+  deviceId: string, minutes = 30, interval = '5s'
+): Promise<{ data: DeviceTelemetryPoint[] }> {
+  try {
+    const end = new Date().toISOString();
+    const start = new Date(Date.now() - minutes * 60000).toISOString();
+    return await fetchJSON(`${SIMULATOR_URL}/api/v1/telemetry/devices/${deviceId}?start=${start}&end=${end}&interval=${interval}`);
+  } catch {
+    return { data: [] };
+  }
+}
+
+export async function getLinkTelemetry(
+  linkId: string, minutes = 30, interval = '5s'
+): Promise<{ data: LinkTelemetryPoint[] }> {
+  try {
+    const end = new Date().toISOString();
+    const start = new Date(Date.now() - minutes * 60000).toISOString();
+    return await fetchJSON(`${SIMULATOR_URL}/api/v1/telemetry/links/${linkId}?start=${start}&end=${end}&interval=${interval}`);
+  } catch {
+    return { data: [] };
+  }
+}
+
+export async function getTopologySnapshot(): Promise<{
+  devices: Record<string, TopologyDevice>;
+  links: Record<string, TopologyLink>;
+}> {
+  try {
+    return await fetchJSON(`${SIMULATOR_URL}/api/v1/topology`);
+  } catch {
+    return { devices: {}, links: {} };
+  }
+}
+
 // Network Health (from simulator) — maps overview response to NetworkHealth shape
 export async function getNetworkHealth(): Promise<NetworkHealth> {
   try {

@@ -29,6 +29,19 @@ class DeviceState:
     region: str | None = None
     peer_as: int | None = None
     peer_name: str | None = None
+    # Hardware metadata
+    vendor: str | None = None
+    model: str | None = None
+    interfaces: list[str] = field(default_factory=list)
+    subscribers: int | None = None
+    pon_ports: int | None = None
+    # Power / environmental
+    power_status: str = "ok"
+    fan_status: str = "ok"
+    psu_count: int = 2
+    psu_active: int = 2
+    fan_count: int = 4
+    fan_active: int = 4
     # Mutable runtime state
     status: DeviceStatus = DeviceStatus.HEALTHY
     cpu_utilization: float = 0.0
@@ -52,6 +65,9 @@ class LinkState:
     capacity_gbps: float
     base_latency_ms: float
     link_type: str
+    # Interface metadata
+    interface_from: str | None = None
+    interface_to: str | None = None
     # Mutable runtime state
     status: LinkStatus = LinkStatus.UP
     utilization_percent: float = 0.0
@@ -104,6 +120,11 @@ class NetworkState:
                     region=config.get("region"),
                     peer_as=config.get("peer_as"),
                     peer_name=config.get("peer_name"),
+                    vendor=config.get("vendor"),
+                    model=config.get("model"),
+                    interfaces=config.get("interfaces", []),
+                    subscribers=config.get("subscribers"),
+                    pon_ports=config.get("pon_ports"),
                 )
 
             # Initialize links
@@ -115,6 +136,8 @@ class NetworkState:
                     capacity_gbps=link_config["capacity_gbps"],
                     base_latency_ms=link_config["base_latency_ms"],
                     link_type=link_config["type"],
+                    interface_from=link_config.get("interface_from"),
+                    interface_to=link_config.get("interface_to"),
                     latency_ms=link_config["base_latency_ms"],
                 )
 
@@ -177,6 +200,19 @@ class NetworkState:
                     "peer_as": d.peer_as,
                     "peer_name": d.peer_name,
                     "rate_limit_mbps": d.rate_limit_mbps,
+                    "vendor": d.vendor,
+                    "model": d.model,
+                    "interfaces": d.interfaces,
+                    "subscribers": d.subscribers,
+                    "pon_ports": d.pon_ports,
+                    "cpu_cores": d.cpu_cores,
+                    "memory_gb": d.memory_gb,
+                    "power_status": d.power_status,
+                    "fan_status": d.fan_status,
+                    "psu_count": d.psu_count,
+                    "psu_active": d.psu_active,
+                    "fan_count": d.fan_count,
+                    "fan_active": d.fan_active,
                 }
                 for did, d in self.devices.items()
             },
@@ -194,6 +230,8 @@ class NetworkState:
                     "packet_loss_percent": round(link.packet_loss_percent, 4),
                     "errors_in": link.errors_in,
                     "errors_out": link.errors_out,
+                    "interface_from": link.interface_from,
+                    "interface_to": link.interface_to,
                 }
                 for lid, link in self.links.items()
             },

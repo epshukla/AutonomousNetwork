@@ -1,83 +1,185 @@
 """
 Network topology definition for the ISP simulator.
 
-2 cities, 10 devices, 14 links — compact but realistic.
+2 cities, 16 devices, 24 links — 5-tier ISP hierarchy.
 All generation logic uses this config. To expand, just add entries.
 """
 
 TOPOLOGY = {
     "cities": ["delhi", "mumbai"],
     "devices": {
-        # Core routers (inter-city backbone)
+        # ── Core routers (inter-city backbone) ──────────────────────
         "core-delhi-1": {
             "type": "core_router",
             "city": "delhi",
+            "vendor": "Juniper",
+            "model": "MX10008",
             "cpu_cores": 8,
             "memory_gb": 32,
+            "interfaces": ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"],
         },
         "core-delhi-2": {
             "type": "core_router",
             "city": "delhi",
+            "vendor": "Cisco",
+            "model": "ASR 9922",
             "cpu_cores": 8,
             "memory_gb": 32,
+            "interfaces": ["HuGE0/0/0/0", "HuGE0/0/0/1", "HuGE0/0/0/2", "HuGE0/0/0/3"],
         },
         "core-mumbai-1": {
             "type": "core_router",
             "city": "mumbai",
+            "vendor": "Juniper",
+            "model": "MX10008",
             "cpu_cores": 8,
             "memory_gb": 32,
+            "interfaces": ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"],
         },
         "core-mumbai-2": {
             "type": "core_router",
             "city": "mumbai",
+            "vendor": "Cisco",
+            "model": "ASR 9922",
             "cpu_cores": 8,
             "memory_gb": 32,
+            "interfaces": ["HuGE0/0/0/0", "HuGE0/0/0/1", "HuGE0/0/0/2", "HuGE0/0/0/3"],
         },
-        # Edge routers
+        # ── Aggregation routers (connect core to edge) ──────────────
+        "agg-delhi-1": {
+            "type": "aggregation_router",
+            "city": "delhi",
+            "vendor": "Cisco",
+            "model": "ASR 9006",
+            "cpu_cores": 6,
+            "memory_gb": 24,
+            "interfaces": ["xe-0/0/0", "xe-0/0/1", "xe-0/0/2", "xe-0/0/3"],
+        },
+        "agg-mumbai-1": {
+            "type": "aggregation_router",
+            "city": "mumbai",
+            "vendor": "Juniper",
+            "model": "MX480",
+            "cpu_cores": 6,
+            "memory_gb": 24,
+            "interfaces": ["xe-0/0/0", "xe-0/0/1", "xe-0/0/2", "xe-0/0/3"],
+        },
+        # ── Edge routers ────────────────────────────────────────────
         "edge-delhi-north": {
             "type": "edge_router",
             "city": "delhi",
             "region": "north",
+            "vendor": "Cisco",
+            "model": "ASR 920",
             "cpu_cores": 4,
             "memory_gb": 16,
+            "interfaces": ["ge-0/0/0", "ge-0/0/1", "ge-0/0/2", "ge-0/0/3"],
         },
         "edge-delhi-south": {
             "type": "edge_router",
             "city": "delhi",
             "region": "south",
+            "vendor": "Cisco",
+            "model": "ASR 920",
             "cpu_cores": 4,
             "memory_gb": 16,
+            "interfaces": ["ge-0/0/0", "ge-0/0/1", "ge-0/0/2", "ge-0/0/3"],
         },
         "edge-mumbai-central": {
             "type": "edge_router",
             "city": "mumbai",
             "region": "central",
+            "vendor": "Juniper",
+            "model": "MX204",
             "cpu_cores": 4,
             "memory_gb": 16,
+            "interfaces": ["ge-0/0/0", "ge-0/0/1", "ge-0/0/2", "ge-0/0/3"],
         },
         "edge-mumbai-harbor": {
             "type": "edge_router",
             "city": "mumbai",
             "region": "harbor",
+            "vendor": "Juniper",
+            "model": "MX204",
             "cpu_cores": 4,
             "memory_gb": 16,
+            "interfaces": ["ge-0/0/0", "ge-0/0/1", "ge-0/0/2", "ge-0/0/3"],
         },
-        # Peering routers
+        # ── OLTs (fiber access to customers) ────────────────────────
+        "olt-delhi-north-1": {
+            "type": "olt",
+            "city": "delhi",
+            "region": "north",
+            "vendor": "Huawei",
+            "model": "MA5800-X15",
+            "subscribers": 150000,
+            "pon_ports": 16,
+            "cpu_cores": 2,
+            "memory_gb": 8,
+            "interfaces": ["uplink-0", "uplink-1"],
+        },
+        "olt-delhi-south-1": {
+            "type": "olt",
+            "city": "delhi",
+            "region": "south",
+            "vendor": "Huawei",
+            "model": "MA5800-X15",
+            "subscribers": 180000,
+            "pon_ports": 16,
+            "cpu_cores": 2,
+            "memory_gb": 8,
+            "interfaces": ["uplink-0", "uplink-1"],
+        },
+        "olt-mumbai-central-1": {
+            "type": "olt",
+            "city": "mumbai",
+            "region": "central",
+            "vendor": "Nokia",
+            "model": "ISAM FX-16",
+            "subscribers": 200000,
+            "pon_ports": 16,
+            "cpu_cores": 2,
+            "memory_gb": 8,
+            "interfaces": ["uplink-0", "uplink-1"],
+        },
+        "olt-mumbai-harbor-1": {
+            "type": "olt",
+            "city": "mumbai",
+            "region": "harbor",
+            "vendor": "Nokia",
+            "model": "ISAM FX-16",
+            "subscribers": 170000,
+            "pon_ports": 16,
+            "cpu_cores": 2,
+            "memory_gb": 8,
+            "interfaces": ["uplink-0", "uplink-1"],
+        },
+        # ── Peering routers ─────────────────────────────────────────
         "peer-delhi-1": {
             "type": "peering_router",
             "city": "delhi",
+            "vendor": "Arista",
+            "model": "7280R3",
             "peer_as": 15169,
             "peer_name": "Google",
+            "cpu_cores": 4,
+            "memory_gb": 16,
+            "interfaces": ["Ethernet1/1", "Ethernet1/2"],
         },
         "peer-mumbai-1": {
             "type": "peering_router",
             "city": "mumbai",
+            "vendor": "Arista",
+            "model": "7280R3",
             "peer_as": 13335,
             "peer_name": "Cloudflare",
+            "cpu_cores": 4,
+            "memory_gb": 16,
+            "interfaces": ["Ethernet1/1", "Ethernet1/2"],
         },
     },
     "links": [
-        # Inter-city backbone (primary + backup)
+        # ── Inter-city backbone (primary + backup) ──────────────────
         {
             "id": "link-del-mum-primary",
             "from": "core-delhi-1",
@@ -85,6 +187,8 @@ TOPOLOGY = {
             "capacity_gbps": 100,
             "base_latency_ms": 12,
             "type": "fiber_backbone",
+            "interface_from": "et-0/0/0",
+            "interface_to": "et-0/0/0",
         },
         {
             "id": "link-del-mum-backup",
@@ -93,8 +197,10 @@ TOPOLOGY = {
             "capacity_gbps": 100,
             "base_latency_ms": 14,
             "type": "fiber_backbone",
+            "interface_from": "HuGE0/0/0/0",
+            "interface_to": "HuGE0/0/0/0",
         },
-        # Intra-city redundancy
+        # ── Intra-city redundancy ───────────────────────────────────
         {
             "id": "link-del-intra",
             "from": "core-delhi-1",
@@ -102,6 +208,8 @@ TOPOLOGY = {
             "capacity_gbps": 200,
             "base_latency_ms": 0.5,
             "type": "fiber_intra",
+            "interface_from": "et-0/0/1",
+            "interface_to": "HuGE0/0/0/1",
         },
         {
             "id": "link-mum-intra",
@@ -110,8 +218,10 @@ TOPOLOGY = {
             "capacity_gbps": 200,
             "base_latency_ms": 0.5,
             "type": "fiber_intra",
+            "interface_from": "et-0/0/1",
+            "interface_to": "HuGE0/0/0/1",
         },
-        # Core to Edge — Delhi
+        # ── Core to Edge — Delhi (redundant direct paths) ───────────
         {
             "id": "link-del-c1-en",
             "from": "core-delhi-1",
@@ -119,6 +229,8 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.0,
             "type": "fiber_metro",
+            "interface_from": "et-0/0/3",
+            "interface_to": "ge-0/0/2",
         },
         {
             "id": "link-del-c1-es",
@@ -127,6 +239,8 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.5,
             "type": "fiber_metro",
+            "interface_from": "et-0/0/2",
+            "interface_to": "ge-0/0/2",
         },
         {
             "id": "link-del-c2-en",
@@ -135,6 +249,8 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.0,
             "type": "fiber_metro",
+            "interface_from": "HuGE0/0/0/3",
+            "interface_to": "ge-0/0/3",
         },
         {
             "id": "link-del-c2-es",
@@ -143,8 +259,10 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.5,
             "type": "fiber_metro",
+            "interface_from": "HuGE0/0/0/2",
+            "interface_to": "ge-0/0/3",
         },
-        # Core to Edge — Mumbai
+        # ── Core to Edge — Mumbai (redundant direct paths) ──────────
         {
             "id": "link-mum-c1-ec",
             "from": "core-mumbai-1",
@@ -152,6 +270,8 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.0,
             "type": "fiber_metro",
+            "interface_from": "et-0/0/3",
+            "interface_to": "ge-0/0/2",
         },
         {
             "id": "link-mum-c1-eh",
@@ -160,6 +280,8 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.2,
             "type": "fiber_metro",
+            "interface_from": "et-0/0/2",
+            "interface_to": "ge-0/0/2",
         },
         {
             "id": "link-mum-c2-ec",
@@ -168,6 +290,8 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.0,
             "type": "fiber_metro",
+            "interface_from": "HuGE0/0/0/3",
+            "interface_to": "ge-0/0/3",
         },
         {
             "id": "link-mum-c2-eh",
@@ -176,8 +300,10 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 1.2,
             "type": "fiber_metro",
+            "interface_from": "HuGE0/0/0/2",
+            "interface_to": "ge-0/0/3",
         },
-        # Peering
+        # ── Peering ─────────────────────────────────────────────────
         {
             "id": "link-del-peer",
             "from": "core-delhi-1",
@@ -185,6 +311,8 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 0.5,
             "type": "peering",
+            "interface_from": "et-0/0/2",
+            "interface_to": "Ethernet1/1",
         },
         {
             "id": "link-mum-peer",
@@ -193,6 +321,111 @@ TOPOLOGY = {
             "capacity_gbps": 40,
             "base_latency_ms": 0.5,
             "type": "peering",
+            "interface_from": "et-0/0/2",
+            "interface_to": "Ethernet1/1",
+        },
+        # ── Core → Aggregation ──────────────────────────────────────
+        {
+            "id": "link-del-c1-agg",
+            "from": "core-delhi-1",
+            "to": "agg-delhi-1",
+            "capacity_gbps": 100,
+            "base_latency_ms": 0.3,
+            "type": "fiber_metro",
+            "interface_from": "et-0/0/2",
+            "interface_to": "xe-0/0/0",
+        },
+        {
+            "id": "link-mum-c1-agg",
+            "from": "core-mumbai-1",
+            "to": "agg-mumbai-1",
+            "capacity_gbps": 100,
+            "base_latency_ms": 0.3,
+            "type": "fiber_metro",
+            "interface_from": "et-0/0/2",
+            "interface_to": "xe-0/0/0",
+        },
+        # ── Aggregation → Edge ──────────────────────────────────────
+        {
+            "id": "link-del-agg-en",
+            "from": "agg-delhi-1",
+            "to": "edge-delhi-north",
+            "capacity_gbps": 40,
+            "base_latency_ms": 0.5,
+            "type": "fiber_metro",
+            "interface_from": "xe-0/0/1",
+            "interface_to": "ge-0/0/0",
+        },
+        {
+            "id": "link-del-agg-es",
+            "from": "agg-delhi-1",
+            "to": "edge-delhi-south",
+            "capacity_gbps": 40,
+            "base_latency_ms": 0.8,
+            "type": "fiber_metro",
+            "interface_from": "xe-0/0/2",
+            "interface_to": "ge-0/0/0",
+        },
+        {
+            "id": "link-mum-agg-ec",
+            "from": "agg-mumbai-1",
+            "to": "edge-mumbai-central",
+            "capacity_gbps": 40,
+            "base_latency_ms": 0.5,
+            "type": "fiber_metro",
+            "interface_from": "xe-0/0/1",
+            "interface_to": "ge-0/0/0",
+        },
+        {
+            "id": "link-mum-agg-eh",
+            "from": "agg-mumbai-1",
+            "to": "edge-mumbai-harbor",
+            "capacity_gbps": 40,
+            "base_latency_ms": 0.8,
+            "type": "fiber_metro",
+            "interface_from": "xe-0/0/2",
+            "interface_to": "ge-0/0/0",
+        },
+        # ── Edge → OLT ──────────────────────────────────────────────
+        {
+            "id": "link-en-olt1",
+            "from": "edge-delhi-north",
+            "to": "olt-delhi-north-1",
+            "capacity_gbps": 10,
+            "base_latency_ms": 0.2,
+            "type": "fiber_access",
+            "interface_from": "ge-0/0/1",
+            "interface_to": "uplink-0",
+        },
+        {
+            "id": "link-es-olt1",
+            "from": "edge-delhi-south",
+            "to": "olt-delhi-south-1",
+            "capacity_gbps": 10,
+            "base_latency_ms": 0.2,
+            "type": "fiber_access",
+            "interface_from": "ge-0/0/1",
+            "interface_to": "uplink-0",
+        },
+        {
+            "id": "link-ec-olt1",
+            "from": "edge-mumbai-central",
+            "to": "olt-mumbai-central-1",
+            "capacity_gbps": 10,
+            "base_latency_ms": 0.2,
+            "type": "fiber_access",
+            "interface_from": "ge-0/0/1",
+            "interface_to": "uplink-0",
+        },
+        {
+            "id": "link-eh-olt1",
+            "from": "edge-mumbai-harbor",
+            "to": "olt-mumbai-harbor-1",
+            "capacity_gbps": 10,
+            "base_latency_ms": 0.2,
+            "type": "fiber_access",
+            "interface_from": "ge-0/0/1",
+            "interface_to": "uplink-0",
         },
     ],
     "bgp_sessions": [

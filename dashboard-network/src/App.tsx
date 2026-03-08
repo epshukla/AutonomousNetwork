@@ -4,22 +4,34 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Network,
-  Activity,
+  Server,
+  Cable,
+  GitBranch,
+  BarChart3,
   Bell,
+  Activity,
   Radio,
   Zap,
 } from 'lucide-react';
 
 import Overview from './pages/Overview';
 import Topology from './pages/Topology';
-import Telemetry from './pages/Telemetry';
-import Events from './pages/Events';
+import Devices from './pages/Devices';
+import Interfaces from './pages/Interfaces';
+import Routing from './pages/Routing';
+import Traffic from './pages/Traffic';
+import Alerts from './pages/Alerts';
+import Metrics from './pages/Metrics';
 
 const navItems = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
   { path: '/topology', label: 'Topology', icon: Network },
-  { path: '/telemetry', label: 'Telemetry', icon: Activity },
-  { path: '/events', label: 'Events', icon: Bell },
+  { path: '/devices', label: 'Devices', icon: Server },
+  { path: '/interfaces', label: 'Interfaces', icon: Cable },
+  { path: '/routing', label: 'Routing', icon: GitBranch },
+  { path: '/traffic', label: 'Traffic', icon: BarChart3 },
+  { path: '/alerts', label: 'Alerts', icon: Bell },
+  { path: '/metrics', label: 'Metrics', icon: Activity },
 ];
 
 const pageVariants = {
@@ -36,7 +48,7 @@ export default function App() {
       {/* Sidebar */}
       <aside className="flex flex-col w-64 min-w-[256px] border-r border-noc-border/50 bg-noc-bg/80 backdrop-blur-xl z-10">
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-noc-border/50">
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-noc-border/50">
           <div className="relative">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-noc-cyan to-blue-600 flex items-center justify-center">
               <Radio className="w-5 h-5 text-white" />
@@ -54,7 +66,7 @@ export default function App() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
@@ -71,7 +83,7 @@ export default function App() {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-noc-border/50">
+        <div className="px-4 py-3 border-t border-noc-border/50">
           <div className="glass-card p-3">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-4 h-4 text-noc-cyan" />
@@ -99,8 +111,12 @@ export default function App() {
             <Routes location={location}>
               <Route path="/" element={<Overview />} />
               <Route path="/topology" element={<Topology />} />
-              <Route path="/telemetry" element={<Telemetry />} />
-              <Route path="/events" element={<Events />} />
+              <Route path="/devices" element={<Devices />} />
+              <Route path="/interfaces" element={<Interfaces />} />
+              <Route path="/routing" element={<Routing />} />
+              <Route path="/traffic" element={<Traffic />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/metrics" element={<Metrics />} />
             </Routes>
           </motion.div>
         </AnimatePresence>

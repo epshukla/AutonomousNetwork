@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAgentEvents } from './hooks/useAgentEvents';
 import ErrorBoundary from './components/ErrorBoundary';
+import LiveTicker from './components/panels/LiveTicker';
 import CommandCenter from './pages/CommandCenter';
 import Incidents from './pages/Incidents';
 import ApprovalPanel from './pages/ApprovalPanel';
@@ -30,6 +31,28 @@ const navItems = [
   { path: '/intelligence', icon: Brain, label: 'Agent Intelligence' },
   { path: '/audit', icon: ScrollText, label: 'Audit Log' },
 ];
+
+function LiveClock() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <span className="text-xs text-noc-muted font-mono">
+      IST{' '}
+      {now.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Kolkata',
+      })}
+    </span>
+  );
+}
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(false);
@@ -145,7 +168,7 @@ export default function App() {
 
       {/* Main Content */}
       <main
-        className="flex-1 transition-all duration-300"
+        className="flex-1 flex flex-col transition-all duration-300"
         style={{ marginLeft: collapsed ? 72 : 260 }}
       >
         {/* Top Bar */}
@@ -164,15 +187,16 @@ export default function App() {
                 <Radio className="w-3.5 h-3.5 text-noc-green animate-pulse" />
                 <span className="text-xs text-noc-muted">Live</span>
               </div>
-              <div className="text-xs text-noc-muted font-mono">
-                {new Date().toLocaleTimeString()}
-              </div>
+              <LiveClock />
             </div>
           </div>
         </header>
 
+        {/* Live Event Ticker */}
+        <LiveTicker />
+
         {/* Page Content */}
-        <div className="p-6">
+        <div className="p-4 flex-1">
           <ErrorBoundary>
             <AnimatePresence mode="wait">
               <motion.div

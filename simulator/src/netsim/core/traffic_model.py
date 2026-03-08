@@ -23,9 +23,11 @@ CITY_MULTIPLIERS = {
 
 # Device type base utilization ranges
 DEVICE_BASE_UTILIZATION = {
-    "core_router": (25.0, 60.0),    # Cores are moderately loaded
-    "edge_router": (30.0, 70.0),    # Edges see more variable traffic
-    "peering_router": (20.0, 55.0), # Peering varies with external demand
+    "core_router": (25.0, 60.0),           # Cores are moderately loaded
+    "edge_router": (30.0, 70.0),           # Edges see more variable traffic
+    "peering_router": (20.0, 55.0),        # Peering varies with external demand
+    "aggregation_router": (28.0, 65.0),    # Between core and edge
+    "olt": (15.0, 45.0),                   # Lower CPU than routers
 }
 
 # Link type base utilization ranges
@@ -34,6 +36,7 @@ LINK_BASE_UTILIZATION = {
     "fiber_intra": (15.0, 45.0),
     "fiber_metro": (25.0, 65.0),
     "peering": (20.0, 50.0),
+    "fiber_access": (30.0, 70.0),   # Access links run hotter
 }
 
 

@@ -3,12 +3,16 @@ import { useWebSocket } from './useWebSocket';
 import {
   getOverview,
   getTopology,
+  getInterfaces,
+  getTrafficAnalytics,
   type OverviewResponse,
   type TopologyResponse,
   type DeviceData,
   type LinkData,
   type WSTelemetryPayload,
   type NetworkEvent,
+  type InterfacesResponse,
+  type TrafficAnalytics,
 } from '../api/simulator';
 
 const BASE_URL = import.meta.env.VITE_SIMULATOR_URL || 'http://localhost:8000';
@@ -141,6 +145,98 @@ export function useWSTelemetry(maxHistory = 60): UseWSTelemetryReturn {
   });
 
   return { latestTelemetry: latest, telemetryHistory: history, isConnected };
+}
+
+// ── Interfaces Hook ──────────────────────────────────────
+
+export interface UseInterfacesReturn {
+  data: InterfacesResponse | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export function useInterfaces(deviceId: string | null, pollInterval = 5000): UseInterfacesReturn {
+  const [data, setData] = useState<InterfacesResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!deviceId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+    let mounted = true;
+
+    const poll = async () => {
+      try {
+        const result = await getInterfaces(deviceId);
+        if (mounted) {
+          setData(result);
+          setError(null);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch interfaces');
+          setLoading(false);
+        }
+      }
+    };
+
+    setLoading(true);
+    poll();
+    const interval = setInterval(poll, pollInterval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [deviceId, pollInterval]);
+
+  return { data, loading, error };
+}
+
+// ── Traffic Analytics Hook ───────────────────────────────
+
+export interface UseTrafficAnalyticsReturn {
+  analytics: TrafficAnalytics | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export function useTrafficAnalytics(pollInterval = 10000): UseTrafficAnalyticsReturn {
+  const [analytics, setAnalytics] = useState<TrafficAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const poll = async () => {
+      try {
+        const data = await getTrafficAnalytics();
+        if (mounted) {
+          setAnalytics(data);
+          setError(null);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch traffic analytics');
+          setLoading(false);
+        }
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, pollInterval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [pollInterval]);
+
+  return { analytics, loading, error };
 }
 
 // ── Events Hook ──────────────────────────────────────────

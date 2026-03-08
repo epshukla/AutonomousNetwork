@@ -1,7 +1,17 @@
 import React, { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
-import { Server, Router, Wifi, Monitor, HardDrive, Globe, AlertTriangle, XCircle } from 'lucide-react';
+import {
+  Server, Router, Wifi, Monitor, HardDrive, Globe, AlertTriangle, XCircle,
+  Scissors, Skull, Zap, TrendingDown, Shuffle, Waves, Brain, Activity,
+  Layers, Radio,
+} from 'lucide-react';
 import StatusDot from '../common/StatusDot';
+
+export interface ActiveChaosInfo {
+  scenario: string;
+  display_name: string;
+  severity: string;
+}
 
 export interface DeviceNodeData {
   label: string;
@@ -11,7 +21,21 @@ export interface DeviceNodeData {
   memory_usage: number;
   temperature: number;
   location: string;
+  vendor?: string | null;
+  model?: string | null;
+  active_chaos?: ActiveChaosInfo[];
 }
+
+const CHAOS_VISUALS: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+  fiber_cut:            { icon: Scissors,     color: '#ff4444', label: 'Fiber Cut' },
+  ddos_attack:          { icon: Skull,        color: '#ff2222', label: 'DDoS' },
+  device_failure:       { icon: Zap,          color: '#ff6600', label: 'Failure' },
+  gradual_degradation:  { icon: TrendingDown, color: '#ffaa00', label: 'Degrading' },
+  bgp_route_leak:       { icon: Shuffle,      color: '#ff44ff', label: 'BGP Leak' },
+  congestion_cascade:   { icon: Waves,        color: '#ff8800', label: 'Cascade' },
+  memory_leak:          { icon: Brain,        color: '#aa44ff', label: 'Mem Leak' },
+  flapping_link:        { icon: Activity,     color: '#ffcc00', label: 'Flapping' },
+};
 
 const deviceIcons: Record<string, React.ElementType> = {
   router: Router,
@@ -25,6 +49,8 @@ const deviceIcons: Record<string, React.ElementType> = {
   distribution_switch: HardDrive,
   access_switch: HardDrive,
   peering_router: Globe,
+  aggregation_router: Layers,
+  olt: Radio,
 };
 
 const statusBorder: Record<string, string> = {
@@ -82,18 +108,18 @@ function DeviceNodeComponent({ data, selected }: NodeProps<DeviceNodeData>) {
     ? 'linear-gradient(135deg, rgba(60,40,10,0.95) 0%, rgba(30,20,5,0.90) 100%)'
     : 'linear-gradient(135deg, rgba(22,27,74,0.95) 0%, rgba(17,22,56,0.85) 100%)';
 
+  const chaosEntries = data.active_chaos || [];
+
   return (
     <>
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30"
-      />
+      <Handle type="target" position={Position.Top} id="top" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
+      <Handle type="source" position={Position.Top} id="top-src" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
+      <Handle type="target" position={Position.Bottom} id="bottom" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
+      <Handle type="source" position={Position.Bottom} id="bottom-src" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
+      <Handle type="target" position={Position.Left} id="left" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
+      <Handle type="source" position={Position.Left} id="left-src" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
+      <Handle type="target" position={Position.Right} id="right" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
+      <Handle type="source" position={Position.Right} id="right-src" className="!w-2 !h-2 !bg-noc-cyan/50 !border-noc-cyan/30" />
       <div
         className={`
           relative rounded-xl border-2 backdrop-blur-sm p-3 min-w-[180px]
@@ -155,6 +181,11 @@ function DeviceNodeComponent({ data, selected }: NodeProps<DeviceNodeData>) {
             <span className="text-[9px] text-noc-muted capitalize font-medium">
               {data.type.replace(/_/g, ' ')} - {data.location}
             </span>
+            {data.vendor && data.model && (
+              <span className="text-[8px] text-noc-muted/60 font-mono block">
+                {data.vendor} {data.model}
+              </span>
+            )}
           </div>
         </div>
 
@@ -183,6 +214,31 @@ function DeviceNodeComponent({ data, selected }: NodeProps<DeviceNodeData>) {
             {(data.temperature || 0).toFixed(0)} C
           </span>
         </div>
+
+        {/* Chaos badges */}
+        {chaosEntries.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {chaosEntries.map((chaos, i) => {
+              const visual = CHAOS_VISUALS[chaos.scenario];
+              if (!visual) return null;
+              const ChaosIcon = visual.icon;
+              return (
+                <div
+                  key={i}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold border animate-pulse"
+                  style={{
+                    color: visual.color,
+                    borderColor: visual.color + '60',
+                    backgroundColor: visual.color + '15',
+                  }}
+                >
+                  <ChaosIcon className="w-2.5 h-2.5" />
+                  <span>{visual.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </>
   );

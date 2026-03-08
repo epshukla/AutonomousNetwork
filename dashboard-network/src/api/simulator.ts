@@ -14,6 +14,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 // ── Interfaces matching actual backend responses ─────────
 
+export interface ActiveChaosInfo {
+  scenario: string;
+  display_name: string;
+  severity: string;
+}
+
 export interface DeviceData {
   device_id: string;
   type: string;
@@ -27,6 +33,20 @@ export interface DeviceData {
   temperature_celsius: number;
   uptime_seconds: number;
   rate_limit_mbps?: number | null;
+  active_chaos?: ActiveChaosInfo[];
+  vendor?: string | null;
+  model?: string | null;
+  interfaces?: string[];
+  subscribers?: number | null;
+  pon_ports?: number | null;
+  cpu_cores?: number;
+  memory_gb?: number;
+  power_status?: string;
+  fan_status?: string;
+  psu_count?: number;
+  psu_active?: number;
+  fan_count?: number;
+  fan_active?: number;
 }
 
 export interface LinkData {
@@ -43,6 +63,9 @@ export interface LinkData {
   packet_loss_percent: number;
   errors_in?: number;
   errors_out?: number;
+  active_chaos?: ActiveChaosInfo[];
+  interface_from?: string | null;
+  interface_to?: string | null;
 }
 
 export interface BgpSession {
@@ -59,6 +82,7 @@ export interface TopologyResponse {
   links: Record<string, LinkData>;
   bgp_sessions: Record<string, BgpSession>;
   customer_distribution: Record<string, { total: number; enterprise: number; residential: number }>;
+  active_chaos?: Array<ActiveChaosInfo & { params: Record<string, unknown> }>;
 }
 
 export interface OverviewResponse {
@@ -175,6 +199,54 @@ export async function getLinkTelemetry(
   return request<TelemetryResponse>(
     `/api/v1/telemetry/links/${linkId}?interval=${interval}`
   );
+}
+
+// ── Interfaces ────────────────────────────────────────────
+
+export interface InterfaceStats {
+  interface: string;
+  status: string;
+  admin_status: string;
+  speed_gbps: number;
+  utilization_percent: number;
+  in_bps: number;
+  out_bps: number;
+  in_errors: number;
+  out_errors: number;
+  connected_to: string | null;
+  link_id: string | null;
+  link_type: string | null;
+}
+
+export interface InterfacesResponse {
+  device_id: string;
+  vendor: string | null;
+  model: string | null;
+  interface_count: number;
+  interfaces: InterfaceStats[];
+}
+
+export async function getInterfaces(deviceId: string): Promise<InterfacesResponse> {
+  return request<InterfacesResponse>(`/api/v1/interfaces/${deviceId}`);
+}
+
+// ── Traffic Analytics ─────────────────────────────────────
+
+export interface TrafficAnalytics {
+  timestamp: string;
+  total_traffic_gbps: number;
+  protocol_breakdown_gbps: Record<string, number>;
+  destination_breakdown_gbps: Record<string, number>;
+  link_traffic: Array<{
+    link_id: string;
+    type: string;
+    throughput_gbps: number;
+    utilization_percent: number;
+  }>;
+}
+
+export async function getTrafficAnalytics(): Promise<TrafficAnalytics> {
+  return request<TrafficAnalytics>('/api/v1/telemetry/traffic-analytics');
 }
 
 // ── Events ───────────────────────────────────────────────

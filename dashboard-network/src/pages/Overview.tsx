@@ -432,6 +432,106 @@ export default function Overview() {
         </div>
       </div>
 
+      {/* Backbone Status */}
+      <div>
+        <h2 className="text-sm font-semibold text-noc-muted uppercase tracking-wider mb-3">Backbone Status</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {links
+            .filter((l) => l.type === 'fiber_backbone')
+            .map((l) => (
+              <motion.div
+                key={l.link_id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card p-4"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-noc-text">{l.link_id}</span>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                    l.status === 'up' ? 'bg-noc-green/10 text-noc-green border border-noc-green/30' :
+                    l.status === 'degraded' ? 'bg-noc-amber/10 text-noc-amber border border-noc-amber/30' :
+                    'bg-noc-red/10 text-noc-red border border-noc-red/30'
+                  }`}>{l.status}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-[10px] text-noc-muted">Util</p>
+                    <p className="text-sm font-mono font-bold text-noc-cyan">{l.utilization_percent.toFixed(1)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-noc-muted">Latency</p>
+                    <p className="text-sm font-mono font-bold text-noc-amber">{l.latency_ms.toFixed(1)} ms</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-noc-muted">Throughput</p>
+                    <p className="text-sm font-mono font-bold text-noc-green">{l.throughput_gbps.toFixed(1)} G</p>
+                  </div>
+                </div>
+                <div className="mt-2 h-1.5 bg-noc-bg/80 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      l.utilization_percent > 90 ? 'bg-noc-red' : l.utilization_percent > 70 ? 'bg-noc-amber' : 'bg-noc-cyan'
+                    }`}
+                    style={{ width: `${Math.min(l.utilization_percent, 100)}%` }}
+                  />
+                </div>
+              </motion.div>
+            ))}
+        </div>
+      </div>
+
+      {/* Per-City Health Cards */}
+      <div>
+        <h2 className="text-sm font-semibold text-noc-muted uppercase tracking-wider mb-3">City Health</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {['delhi', 'mumbai'].map((city) => {
+            const cityDevices = devices.filter((d) => d.city === city);
+            const healthyCount = cityDevices.filter((d) => d.status === 'healthy').length;
+            const avgCpu = cityDevices.length > 0
+              ? cityDevices.reduce((s, d) => s + d.cpu_utilization, 0) / cityDevices.length
+              : 0;
+            const totalSubs = cityDevices.reduce((s, d) => s + (d.subscribers || 0), 0);
+            const peeringDevice = cityDevices.find((d) => d.type === 'peering_router');
+
+            return (
+              <motion.div
+                key={city}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card p-4"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-white capitalize">{city}</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    healthyCount === cityDevices.length ? 'bg-noc-green/10 text-noc-green border border-noc-green/30' :
+                    healthyCount > cityDevices.length / 2 ? 'bg-noc-amber/10 text-noc-amber border border-noc-amber/30' :
+                    'bg-noc-red/10 text-noc-red border border-noc-red/30'
+                  }`}>
+                    {healthyCount}/{cityDevices.length} healthy
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-[10px] text-noc-muted">Avg CPU</p>
+                    <p className="text-lg font-mono font-bold text-noc-cyan">{avgCpu.toFixed(0)}%</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-noc-muted">Subscribers</p>
+                    <p className="text-lg font-mono font-bold text-noc-green">{totalSubs > 0 ? `${(totalSubs / 1000).toFixed(0)}K` : '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-noc-muted">Peering</p>
+                    <p className={`text-lg font-mono font-bold ${
+                      peeringDevice?.status === 'healthy' ? 'text-noc-green' : 'text-noc-red'
+                    }`}>{peeringDevice?.peer_name || '—'}</p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Bottom sparkline area: CPU + Throughput wide charts */}
       <div className="grid grid-cols-2 gap-6">
         <motion.div

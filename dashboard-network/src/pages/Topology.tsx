@@ -28,105 +28,199 @@ import DeviceNodeComponent, {
   type DeviceNodeData,
 } from '../components/topology/DeviceNode';
 import LinkEdge, { type LinkEdgeData } from '../components/topology/LinkEdge';
+import ZoneNode from '../components/topology/ZoneNode';
+import AnnotationNode from '../components/topology/AnnotationNode';
 import HealthBadge from '../components/common/HealthBadge';
 import StatusDot from '../components/common/StatusDot';
 import { useTopology, useWSTelemetry } from '../hooks/useTelemetry';
 import type { DeviceData, LinkData } from '../api/simulator';
 
-const nodeTypes = { device: DeviceNodeComponent };
+const nodeTypes = {
+  device: DeviceNodeComponent,
+  zone: ZoneNode,
+  annotation: AnnotationNode,
+};
 const edgeTypes = { link: LinkEdge };
 
-// Layout helper: position devices based on city
-function layoutDevices(
-  devices: DeviceData[]
-): Node<DeviceNodeData>[] {
-  const delhiDevices = devices.filter(
-    (d) => d.city?.toLowerCase().includes('delhi') || d.city?.toLowerCase().includes('del')
-  );
-  const mumbaiDevices = devices.filter(
-    (d) => d.city?.toLowerCase().includes('mumbai') || d.city?.toLowerCase().includes('mum') || d.city?.toLowerCase().includes('bom')
-  );
-  const otherDevices = devices.filter(
-    (d) => !delhiDevices.includes(d) && !mumbaiDevices.includes(d)
-  );
+// ── Hierarchical positions: peering (top) → core (middle) → edge (bottom) ──
 
-  const nodes: Node<DeviceNodeData>[] = [];
-  const ySpacing = 140;
-  const xLeft = 50;
-  const xRight = 600;
-  const xMid = 325;
+const DEVICE_POSITIONS: Record<string, { x: number; y: number }> = {
+  // ── Delhi — left side ──
+  'peer-delhi-1':          { x: 180, y: 40 },
+  'core-delhi-1':          { x: 80,  y: 200 },
+  'core-delhi-2':          { x: 280, y: 200 },
+  'agg-delhi-1':           { x: 180, y: 360 },
+  'edge-delhi-north':      { x: 80,  y: 520 },
+  'edge-delhi-south':      { x: 280, y: 520 },
+  'olt-delhi-north-1':     { x: 80,  y: 680 },
+  'olt-delhi-south-1':     { x: 280, y: 680 },
+  // ── Mumbai — right side ──
+  'peer-mumbai-1':         { x: 680, y: 40 },
+  'core-mumbai-1':         { x: 580, y: 200 },
+  'core-mumbai-2':         { x: 780, y: 200 },
+  'agg-mumbai-1':          { x: 680, y: 360 },
+  'edge-mumbai-central':   { x: 580, y: 520 },
+  'edge-mumbai-harbor':    { x: 780, y: 520 },
+  'olt-mumbai-central-1':  { x: 580, y: 680 },
+  'olt-mumbai-harbor-1':   { x: 780, y: 680 },
+};
 
-  const toNodeData = (device: DeviceData): DeviceNodeData => ({
-    label: device.device_id,
-    type: device.type,
-    status: device.status,
-    cpu_usage: device.cpu_utilization,
-    memory_usage: device.memory_utilization,
-    temperature: device.temperature_celsius,
-    location: device.city,
-  });
+const FRIENDLY_NAMES: Record<string, string> = {
+  'peer-delhi-1':          'Delhi Peering (Google)',
+  'core-delhi-1':          'Delhi Core 1',
+  'core-delhi-2':          'Delhi Core 2',
+  'agg-delhi-1':           'Delhi Aggregation',
+  'edge-delhi-north':      'Delhi North Edge',
+  'edge-delhi-south':      'Delhi South Edge',
+  'olt-delhi-north-1':     'Delhi North OLT',
+  'olt-delhi-south-1':     'Delhi South OLT',
+  'peer-mumbai-1':         'Mumbai Peering (Cloudflare)',
+  'core-mumbai-1':         'Mumbai Core 1',
+  'core-mumbai-2':         'Mumbai Core 2',
+  'agg-mumbai-1':          'Mumbai Aggregation',
+  'edge-mumbai-central':   'Mumbai Central Edge',
+  'edge-mumbai-harbor':    'Mumbai Harbor Edge',
+  'olt-mumbai-central-1':  'Mumbai Central OLT',
+  'olt-mumbai-harbor-1':   'Mumbai Harbor OLT',
+};
 
-  delhiDevices.forEach((device, i) => {
-    nodes.push({
+// ── Zone + Annotation nodes (static) ──
+
+const ZONE_NODES: Node[] = [
+  {
+    id: 'zone-delhi',
+    type: 'zone',
+    position: { x: -10, y: 0 },
+    data: { label: 'Delhi  •  1.2M Customers', width: 420, height: 780 },
+    zIndex: -1,
+    selectable: false,
+    draggable: false,
+  },
+  {
+    id: 'zone-mumbai',
+    type: 'zone',
+    position: { x: 490, y: 0 },
+    data: { label: 'Mumbai  •  1.5M Customers', width: 420, height: 780 },
+    zIndex: -1,
+    selectable: false,
+    draggable: false,
+  },
+];
+
+const ANNOTATION_NODES: Node[] = [
+  {
+    id: 'tier-peering',
+    type: 'annotation',
+    position: { x: -150, y: 55 },
+    data: { label: 'PEERING', sublabel: 'Internet Exchange' },
+    selectable: false,
+    draggable: false,
+  },
+  {
+    id: 'tier-core',
+    type: 'annotation',
+    position: { x: -150, y: 215 },
+    data: { label: 'CORE', sublabel: 'Backbone' },
+    selectable: false,
+    draggable: false,
+  },
+  {
+    id: 'tier-agg',
+    type: 'annotation',
+    position: { x: -150, y: 375 },
+    data: { label: 'AGGREGATION', sublabel: 'Distribution' },
+    selectable: false,
+    draggable: false,
+  },
+  {
+    id: 'tier-edge',
+    type: 'annotation',
+    position: { x: -150, y: 535 },
+    data: { label: 'EDGE', sublabel: 'Customer-Facing' },
+    selectable: false,
+    draggable: false,
+  },
+  {
+    id: 'tier-olt',
+    type: 'annotation',
+    position: { x: -150, y: 695 },
+    data: { label: 'OLT / ACCESS', sublabel: 'Fiber to Home' },
+    selectable: false,
+    draggable: false,
+  },
+];
+
+// ── Layout helpers ──
+
+function layoutDevices(devices: DeviceData[]): Node<DeviceNodeData>[] {
+  return devices.map((device) => {
+    const pos = DEVICE_POSITIONS[device.device_id] || { x: 400, y: 300 };
+    return {
       id: device.device_id,
       type: 'device',
-      position: { x: xLeft, y: 60 + i * ySpacing },
-      data: toNodeData(device),
-    });
+      position: pos,
+      data: {
+        label: FRIENDLY_NAMES[device.device_id] || device.device_id,
+        type: device.type,
+        status: device.status,
+        cpu_usage: device.cpu_utilization,
+        memory_usage: device.memory_utilization,
+        temperature: device.temperature_celsius,
+        location: device.city,
+        vendor: device.vendor,
+        model: device.model,
+        active_chaos: device.active_chaos || [],
+      },
+    };
   });
-
-  mumbaiDevices.forEach((device, i) => {
-    nodes.push({
-      id: device.device_id,
-      type: 'device',
-      position: { x: xRight, y: 60 + i * ySpacing },
-      data: toNodeData(device),
-    });
-  });
-
-  otherDevices.forEach((device, i) => {
-    nodes.push({
-      id: device.device_id,
-      type: 'device',
-      position: { x: xMid, y: 60 + i * ySpacing },
-      data: toNodeData(device),
-    });
-  });
-
-  // If no location-based grouping worked, lay all out in grid
-  if (nodes.length === 0) {
-    devices.forEach((device, i) => {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      nodes.push({
-        id: device.device_id,
-        type: 'device',
-        position: { x: 50 + col * 280, y: 60 + row * ySpacing },
-        data: toNodeData(device),
-      });
-    });
-  }
-
-  return nodes;
 }
 
-function layoutEdges(
-  links: LinkData[]
-): Edge<LinkEdgeData>[] {
-  return links.map((link) => ({
-    id: link.link_id,
-    source: link.from,
-    target: link.to,
-    type: 'link',
-    data: {
-      status: link.status === 'up' ? 'healthy' : link.status as 'degraded' | 'down',
-      utilization: link.utilization_percent,
-      latency_ms: link.latency_ms,
-      packet_loss: link.packet_loss_percent,
-      throughput_gbps: link.throughput_gbps,
-      bandwidth_gbps: link.capacity_gbps,
-    },
-  }));
+function layoutEdges(links: LinkData[]): Edge<LinkEdgeData>[] {
+  return links.map((link) => {
+    const sourcePos = DEVICE_POSITIONS[link.from];
+    const targetPos = DEVICE_POSITIONS[link.to];
+
+    let sourceHandle = 'right-src';
+    let targetHandle = 'left';
+
+    if (sourcePos && targetPos) {
+      const dy = Math.abs(sourcePos.y - targetPos.y);
+      const dx = Math.abs(sourcePos.x - targetPos.x);
+      const isVertical = dy > 100;
+
+      if (isVertical) {
+        // Vertical link: use top/bottom handles
+        sourceHandle = sourcePos.y < targetPos.y ? 'bottom-src' : 'top-src';
+        targetHandle = sourcePos.y < targetPos.y ? 'top' : 'bottom';
+      } else if (dx > 200) {
+        // Long horizontal link (inter-city backbone)
+        sourceHandle = 'right-src';
+        targetHandle = 'left';
+      } else {
+        // Short horizontal (intra-city same tier)
+        sourceHandle = sourcePos.x < targetPos.x ? 'right-src' : 'left-src';
+        targetHandle = sourcePos.x < targetPos.x ? 'left' : 'right';
+      }
+    }
+
+    return {
+      id: link.link_id,
+      source: link.from,
+      target: link.to,
+      type: 'link',
+      sourceHandle,
+      targetHandle,
+      data: {
+        status: link.status === 'up' ? 'healthy' : link.status as 'degraded' | 'down',
+        utilization: link.utilization_percent,
+        latency_ms: link.latency_ms,
+        packet_loss: link.packet_loss_percent,
+        throughput_gbps: link.throughput_gbps,
+        bandwidth_gbps: link.capacity_gbps,
+        active_chaos: link.active_chaos || [],
+      },
+    };
+  });
 }
 
 // ── Detail Panel ───────────────────────────────────────────
@@ -245,11 +339,11 @@ function DetailPanel({ type, data, onClose }: DetailPanelProps) {
                 </div>
                 <div className="flex justify-between mb-1">
                   <span>Source</span>
-                  <span className="text-noc-text">{d.source}</span>
+                  <span className="text-noc-text">{FRIENDLY_NAMES[d.source] || d.source}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Target</span>
-                  <span className="text-noc-text">{d.target}</span>
+                  <span className="text-noc-text">{FRIENDLY_NAMES[d.target] || d.target}</span>
                 </div>
               </div>
             </>
@@ -337,12 +431,18 @@ export default function Topology() {
     });
   }, [links, latestTelemetry]);
 
-  const nodes = useMemo(() => layoutDevices(mergedDevices), [mergedDevices]);
+  const deviceNodes = useMemo(() => layoutDevices(mergedDevices), [mergedDevices]);
   const edges = useMemo(() => layoutEdges(mergedLinks), [mergedLinks]);
+
+  // Combine all nodes: zones (background) + annotations + devices
+  const nodes = useMemo(
+    () => [...ZONE_NODES, ...ANNOTATION_NODES, ...deviceNodes],
+    [deviceNodes]
+  );
 
   const onSelectionChange: OnSelectionChangeFunc = useCallback(
     ({ nodes: selNodes, edges: selEdges }) => {
-      if (selNodes.length > 0) {
+      if (selNodes.length > 0 && selNodes[0].type === 'device') {
         setSelectedNode(selNodes[0].id);
         setSelectedEdge(null);
       } else if (selEdges.length > 0) {
@@ -361,9 +461,9 @@ export default function Topology() {
   // Get detail data
   const selectedDeviceData = useMemo(() => {
     if (!selectedNode) return null;
-    const node = nodes.find((n) => n.id === selectedNode);
+    const node = deviceNodes.find((n) => n.id === selectedNode);
     return node?.data || null;
-  }, [selectedNode, nodes]);
+  }, [selectedNode, deviceNodes]);
 
   const selectedLinkData = useMemo(() => {
     if (!selectedEdge) return null;
@@ -391,7 +491,7 @@ export default function Topology() {
           <div>
             <h1 className="text-2xl font-bold text-white">Network Topology</h1>
             <p className="text-sm text-noc-muted">
-              {mergedDevices.length} devices, {mergedLinks.length} links
+              {mergedDevices.length} devices, {mergedLinks.length} links — 2.7M customers
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -432,7 +532,6 @@ export default function Topology() {
         maxZoom={2}
         defaultEdgeOptions={{
           type: 'link',
-          markerEnd: { type: MarkerType.Arrow, width: 15, height: 15 },
         }}
         proOptions={{ hideAttribution: true }}
       >
@@ -448,6 +547,7 @@ export default function Topology() {
         />
         <MiniMap
           nodeStrokeColor={(n) => {
+            if (n.type !== 'device') return 'transparent';
             const status = (n.data as DeviceNodeData)?.status;
             return status === 'healthy'
               ? '#00ff88'
@@ -458,6 +558,7 @@ export default function Topology() {
               : '#555555';
           }}
           nodeColor={(n) => {
+            if (n.type !== 'device') return 'transparent';
             const status = (n.data as DeviceNodeData)?.status;
             return status === 'healthy'
               ? '#00ff8830'
