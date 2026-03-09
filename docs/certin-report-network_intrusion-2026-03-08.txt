@@ -1,0 +1,39 @@
+=== CERT-In Incident Report ===
+
+Organization: ISP Network Operations — Autonomous NOC
+Sector: Telecommunications
+Incident Type: network_intrusion
+Severity: medium
+Classification: Unauthorized Network Access / Intrusion
+Generated At: 2026-03-08T10:59:30.610783+05:30
+
+--- Timeline ---
+  [2026-03-08T02:18:57.551456+00:00] Incident detected: memory_leak
+  [2026-03-08T02:24:40.676717+00:00] Incident resolved: memory_leak
+  [2026-03-08T02:18:57.551456+00:00] Incident detected: fiber_cut
+  [2026-03-08T02:37:50.957914+00:00] Incident resolved: fiber_cut
+  [2026-03-08T02:18:57.551456+00:00] Incident detected: gradual_degradation
+  [2026-03-08T02:39:20.038739+00:00] Incident resolved: gradual_degradation
+
+--- Affected Systems ---
+  - None — all systems operational
+
+--- Remediation Steps ---
+  1. Isolated affected network segment
+  2. Blocked suspicious source IPs at edge firewall
+  3. Initiated forensic packet capture analysis
+  4. Rotated all affected credentials
+  5. Enhanced IDS/IPS rule signatures
+  6. Notified CERT-In within 6-hour window
+
+--- Reporting Compliance ---
+  Within 6 Hours: Yes
+  Reported At: 2026-03-08T10:59:30.610783+05:30
+  Deadline: 2026-03-08T15:59:30.610783+05:30
+  Regulation: CERT-In Directions dated 28.04.2022
+
+--- Contact Information ---
+  Name: Network Operations Center
+  Designation: Chief Information Security Officer
+  Phone: +91-11-2436-XXXX
+  Email: cert-reporting@isp-noc.in
